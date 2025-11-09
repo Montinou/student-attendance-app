@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://v0-student-attendance-app-fawn.vercel.app'
 
 // Helper function to authenticate
 async function authenticateUser(request: any, email: string, password: string) {
