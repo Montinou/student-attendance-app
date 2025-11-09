@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createClient } from "@/lib/supabase/client"
+import { createAttendanceSession } from "@/actions/attendanceActions"
 import type { Subject } from "@/lib/types"
 import { QrCode, Clock } from "lucide-react"
 
@@ -30,22 +30,16 @@ export function QRGeneratorCard({ subjects }: QRGeneratorCardProps) {
     setIsLoading(true)
     setError(null)
 
-    const supabase = createClient()
-
     try {
-      // Generate unique QR code (UUID + timestamp)
-      const qrCode = `${selectedSubject}-${Date.now()}-${Math.random().toString(36).substring(7)}`
-      const expiresAt = new Date()
-      expiresAt.setMinutes(expiresAt.getMinutes() + Number.parseInt(duration))
+      // Use Server Action to create attendance session
+      // This generates QR with proper format: sessionId|subjectId|teacherId|timestamp
+      const result = await createAttendanceSession(selectedSubject)
 
-      const { error } = await supabase.from("attendance_sessions").insert({
-        subject_id: selectedSubject,
-        qr_code: qrCode,
-        expires_at: expiresAt.toISOString(),
-      })
+      if (!result.success) {
+        throw new Error(result.message)
+      }
 
-      if (error) throw error
-
+      // Success - refresh page to show new session
       router.refresh()
       setSelectedSubject("")
     } catch (err) {
