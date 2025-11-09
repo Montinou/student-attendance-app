@@ -104,10 +104,15 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
         .from("attendance_sessions")
         .select("*, subjects(*)")
         .eq("qr_code", qrCode)
-        .single()
+        .maybeSingle()
 
-      if (sessionError || !session) {
-        throw new Error("Código QR inválido")
+      if (sessionError) {
+        console.error("Session lookup error:", sessionError)
+        throw new Error("Error al buscar sesión de asistencia")
+      }
+
+      if (!session) {
+        throw new Error("Código QR inválido o no estás inscrito en esta materia")
       }
 
       // Check if session is still valid
@@ -118,42 +123,65 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
       }
 
       // Check if student is enrolled
-      const { data: enrollment } = await supabase
+      const { data: enrollment, error: enrollmentError } = await supabase
         .from("enrollments")
         .select("*")
         .eq("student_id", user.id)
         .eq("subject_id", session.subject_id)
-        .single()
+        .maybeSingle()
+
+      if (enrollmentError) {
+        console.error("Enrollment check error:", enrollmentError)
+        throw new Error("Error al verificar inscripción")
+      }
 
       if (!enrollment) {
         throw new Error("No estás inscrito en esta materia")
       }
 
       // Check if already marked attendance
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from("attendance_records")
         .select("*")
         .eq("session_id", session.id)
         .eq("student_id", user.id)
-        .single()
+        .maybeSingle()
+
+      if (existingError) {
+        console.error("Attendance check error:", existingError)
+        throw new Error("Error al verificar asistencia previa")
+      }
 
       if (existing) {
         throw new Error("Ya registraste tu asistencia para esta sesión")
       }
 
       // Record attendance
-      const { error: insertError } = await supabase.from("attendance_records").insert({
-        session_id: session.id,
-        student_id: user.id,
-        subject_id: session.subject_id,
-      })
+      const { data: attendanceRecord, error: insertError } = await supabase
+        .from("attendance_records")
+        .insert({
+          session_id: session.id,
+          student_id: user.id,
+          subject_id: session.subject_id,
+        })
+        .select()
 
-      if (insertError) throw insertError
+      if (insertError) {
+        console.error("Attendance insert error:", insertError)
+        throw new Error("Error al registrar asistencia")
+      }
+
+      console.log("✅ Asistencia registrada exitosamente:", {
+        student_id: user.id,
+        session_id: session.id,
+        subject: session.subjects?.name,
+        timestamp: new Date().toISOString()
+      })
 
       setSuccess(true)
       router.refresh()
     } catch (err) {
-      console.error("[v0] QR scan error:", err)
+      console.error("❌ QR scan error:", err)
       setError(err instanceof Error ? err.message : "Error al registrar asistencia")
     }
   }

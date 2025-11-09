@@ -49,36 +49,58 @@ export function ManageEnrollmentsDialog({ subject, open, onOpenChange }: ManageE
 
     try {
       // Find student by email
-      const { data: student } = await supabase
+      const { data: student, error: studentError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("email", studentEmail)
+        .eq("email", studentEmail.trim().toLowerCase())
         .eq("role", "student")
-        .single()
+        .maybeSingle()
+
+      if (studentError) {
+        console.error("Student lookup error:", studentError)
+        throw new Error("Error al buscar estudiante")
+      }
 
       if (!student) {
         throw new Error("No se encontró un estudiante con ese correo")
       }
 
       // Check if already enrolled
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from("enrollments")
         .select("*")
         .eq("student_id", student.id)
         .eq("subject_id", subject.id)
-        .single()
+        .maybeSingle()
+
+      if (existingError) {
+        console.error("Enrollment check error:", existingError)
+        throw new Error("Error al verificar inscripción")
+      }
 
       if (existing) {
         throw new Error("El estudiante ya está inscrito en esta materia")
       }
 
       // Create enrollment
-      const { error } = await supabase.from("enrollments").insert({
-        student_id: student.id,
-        subject_id: subject.id,
-      })
+      const { data: newEnrollment, error: insertError } = await supabase
+        .from("enrollments")
+        .insert({
+          student_id: student.id,
+          subject_id: subject.id,
+        })
+        .select()
 
-      if (error) throw error
+      if (insertError) {
+        console.error("Enrollment insert error:", insertError)
+        throw insertError
+      }
+
+      console.log("✅ Estudiante inscrito exitosamente:", {
+        student: student.full_name,
+        email: student.email,
+        subject: subject.name
+      })
 
       setStudentEmail("")
       loadEnrollments()
