@@ -2,11 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import type { Subject, Enrollment } from "@/lib/types"
+import type { Subject } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BookOpen, UserPlus, CheckCircle2, Loader2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 interface AvailableSubjectsListProps {
   subjects: (Subject & { profiles?: { full_name: string } })[]
@@ -22,50 +21,22 @@ export function AvailableSubjectsList({ subjects, enrolledSubjectIds }: Availabl
     setEnrolling(subjectId)
     setError(null)
 
-    const supabase = createClient()
-
     try {
-      // Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
-        throw new Error("Debes iniciar sesión para inscribirte")
-      }
-
-      // Check if already enrolled (double check)
-      const { data: existing, error: checkError } = await supabase
-        .from("enrollments")
-        .select("*")
-        .eq("student_id", user.id)
-        .eq("subject_id", subjectId)
-        .maybeSingle()
-
-      if (checkError) {
-        console.error("Enrollment check error:", checkError)
-        throw new Error("Error al verificar inscripción")
-      }
-
-      if (existing) {
-        throw new Error("Ya estás inscrito en esta materia")
-      }
-
-      // Create enrollment
-      const { data: newEnrollment, error: insertError } = await supabase
-        .from("enrollments")
-        .insert({
-          student_id: user.id,
-          subject_id: subjectId,
-        })
-        .select()
-
-      if (insertError) {
-        console.error("Enrollment insert error:", insertError)
-        throw new Error("Error al inscribirse. Por favor intenta de nuevo.")
-      }
-
-      console.log("✅ Inscripción exitosa:", {
-        student_id: user.id,
-        subject_id: subjectId
+      const response = await fetch("/api/enrollments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ subjectId }),
       })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al inscribirse. Por favor intenta de nuevo.")
+      }
+
+      console.log("✅ Inscripción exitosa:", data.enrollment)
 
       // Refresh the page to show updated enrollments
       router.refresh()

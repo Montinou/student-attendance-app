@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createClient } from "@/lib/supabase/client"
 import type { Subject, Enrollment } from "@/lib/types"
 import { UserPlus, X, Users } from "lucide-react"
 
@@ -32,11 +31,15 @@ export function ManageEnrollmentsDialog({ subject, open, onOpenChange }: ManageE
   }, [open, subject.id])
 
   const loadEnrollments = async () => {
-    const supabase = createClient()
-    const { data } = await supabase.from("enrollments").select("*, profiles(*)").eq("subject_id", subject.id)
+    try {
+      const response = await fetch(`/api/enrollments?subjectId=${subject.id}`)
+      const data = await response.json()
 
-    if (data) {
-      setEnrollments(data)
+      if (response.ok && data.enrollments) {
+        setEnrollments(data.enrollments)
+      }
+    } catch (err) {
+      console.error("Error loading enrollments:", err)
     }
   }
 
@@ -45,62 +48,25 @@ export function ManageEnrollmentsDialog({ subject, open, onOpenChange }: ManageE
     setIsLoading(true)
     setError(null)
 
-    const supabase = createClient()
-
     try {
-      // Find student by email
-      const { data: student, error: studentError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("email", studentEmail.trim().toLowerCase())
-        .eq("role", "student")
-        .maybeSingle()
-
-      if (studentError) {
-        console.error("Student lookup error:", studentError)
-        throw new Error("Error al buscar estudiante")
-      }
-
-      if (!student) {
-        throw new Error("No se encontró un estudiante con ese correo")
-      }
-
-      // Check if already enrolled
-      const { data: existing, error: existingError } = await supabase
-        .from("enrollments")
-        .select("*")
-        .eq("student_id", student.id)
-        .eq("subject_id", subject.id)
-        .maybeSingle()
-
-      if (existingError) {
-        console.error("Enrollment check error:", existingError)
-        throw new Error("Error al verificar inscripción")
-      }
-
-      if (existing) {
-        throw new Error("El estudiante ya está inscrito en esta materia")
-      }
-
-      // Create enrollment
-      const { data: newEnrollment, error: insertError } = await supabase
-        .from("enrollments")
-        .insert({
-          student_id: student.id,
-          subject_id: subject.id,
-        })
-        .select()
-
-      if (insertError) {
-        console.error("Enrollment insert error:", insertError)
-        throw insertError
-      }
-
-      console.log("✅ Estudiante inscrito exitosamente:", {
-        student: student.full_name,
-        email: student.email,
-        subject: subject.name
+      const response = await fetch("/api/enrollments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: studentEmail.trim().toLowerCase(),
+          subjectId: subject.id,
+        }),
       })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al agregar estudiante")
+      }
+
+      console.log("✅ Estudiante inscrito exitosamente:", data.enrollment)
 
       setStudentEmail("")
       loadEnrollments()
@@ -113,12 +79,15 @@ export function ManageEnrollmentsDialog({ subject, open, onOpenChange }: ManageE
   }
 
   const handleRemoveStudent = async (enrollmentId: string) => {
-    const supabase = createClient()
-
     try {
-      const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId)
+      const response = await fetch(`/api/enrollments/${enrollmentId}`, {
+        method: "DELETE",
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Error al eliminar estudiante")
+      }
 
       loadEnrollments()
       router.refresh()

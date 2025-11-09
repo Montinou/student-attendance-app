@@ -33,43 +33,36 @@
 ## 📋 Pending Refactoring
 
 ### Enrollment Components (High Priority)
-- [ ] `components/manage-enrollments-dialog.tsx`
-  - **Current:** Direct Supabase calls for enrollment management
-  - **Target:** Use `POST /api/enrollments`, `DELETE /api/enrollments/[id]`, `GET /api/enrollments`
-  - **Complexity:** Medium
-  - **Impact:** Teachers can't manage enrollments without this
+- [x] `components/manage-enrollments-dialog.tsx`
+  - **Status:** ✅ COMPLETED - Now uses API routes
+  - **Changes:** Uses `GET /api/enrollments?subjectId=xxx`, `POST /api/enrollments` (with email), `DELETE /api/enrollments/[id]`
+  - **Removed:** Direct Supabase client imports
 
-- [ ] `components/available-subjects-list.tsx`
-  - **Current:** Direct Supabase calls to list subjects and check enrollment
-  - **Target:** Use `GET /api/subjects`, `GET /api/enrollments/check`, `POST /api/enrollments`
-  - **Complexity:** Medium
-  - **Impact:** Students can't enroll in subjects without this
+- [x] `components/available-subjects-list.tsx`
+  - **Status:** ✅ COMPLETED - Now uses API routes
+  - **Changes:** Uses `POST /api/enrollments` (with subjectId only)
+  - **Removed:** Auth checks, enrollment checks (handled by API)
 
-- [ ] `components/enrolled-subjects-list.tsx`
-  - **Current:** Direct Supabase calls to list student enrollments
-  - **Target:** Use `GET /api/enrollments?studentId=xxx`, `DELETE /api/enrollments/[id]`
-  - **Complexity:** Low
-  - **Impact:** Students can't view their enrolled subjects
+- [x] `components/enrolled-subjects-list.tsx`
+  - **Status:** ✅ NO CHANGES NEEDED - Presentational component only
+  - **Note:** No Supabase calls, receives data via props
 
 ### QR Code Components (High Priority)
-- [ ] `components/qr-generator-card.tsx`
-  - **Current:** Direct Supabase calls to create/manage sessions
-  - **Target:** Use `POST /api/attendance-sessions`, `GET /api/attendance-sessions`, `PATCH /api/attendance-sessions/[id]`
-  - **Complexity:** Medium
-  - **Impact:** Teachers can't generate QR codes for attendance
-  - **Note:** Keep QR rendering utilities (`lib/qr/generator`)
+- [x] `components/qr-generator-card.tsx`
+  - **Status:** ✅ COMPLETED - Now uses API routes
+  - **Changes:** Uses `POST /api/attendance-sessions` with subjectId and expiresInMinutes
+  - **Removed:** Auth checks, QR generation logic (handled by API)
 
-- [ ] `components/qr-scanner-dialog.tsx`
-  - **Current:** Direct Supabase calls to validate and record attendance
-  - **Target:** Use `POST /api/attendance-sessions/validate`, `POST /api/attendance-records`
-  - **Complexity:** Medium
-  - **Impact:** Students can't record attendance
-  - **Note:** Keep camera scanning utilities (`lib/qr/scanner`)
+- [x] `components/qr-scanner-dialog.tsx`
+  - **Status:** ✅ COMPLETED - Now uses API routes
+  - **Changes:** Uses `POST /api/attendance-records` with qrCode
+  - **Removed:** All validation logic (session lookup, expiry check, enrollment check, duplicate check)
+  - **Kept:** Camera scanning utilities (`@zxing/browser`)
 
 ### List Components (May Need Refactoring)
-- [ ] `components/subjects-list.tsx` ⚠️ **NEEDS REVIEW**
-  - **Status:** Unknown - needs inspection
-  - **Action:** Check if it uses direct Supabase calls
+- [x] `components/subjects-list.tsx` ✅ **REVIEWED**
+  - **Status:** NO CHANGES NEEDED - Presentational component only
+  - **Note:** No Supabase calls, just renders dialogs
 
 ### Dashboard Pages (Optional - Server Components)
 - [ ] `app/teacher/page.tsx`
@@ -157,35 +150,37 @@
 |----------|-----------|---------|-------|----------|
 | Auth Components | 2 | 0 | 2 | 100% |
 | Subject Components | 3 | 0 | 3 | 100% |
-| Enrollment Components | 0 | 3 | 3 | 0% |
-| QR Components | 0 | 2 | 2 | 0% |
+| Enrollment Components | 3 | 0 | 3 | 100% ✅ |
+| QR Components | 2 | 0 | 2 | 100% ✅ |
 | Dashboard Pages | 0 | 4 | 4 | 0% (Optional) |
-| Review Needed | 0 | 1 | 1 | 0% |
-| **TOTAL** | **5** | **10** | **15** | **33%** |
+| Review Needed | 1 | 0 | 1 | 100% ✅ |
+| **TOTAL** | **11** | **4** | **15** | **73%** |
 
-**Critical Path (Must Complete):** 5/10 components (50% done)
+**Critical Path (Must Complete):** 10/10 components ✅ **100% DONE**
 **Optional (Server Components):** 0/4 components (0% done)
 
 ---
 
-## 🚀 Next Steps
+## 🎉 CRITICAL PATH COMPLETE!
 
-### Immediate (High Priority)
-1. **Refactor Enrollment Components** - Students can't enroll without this
-   - Start with `available-subjects-list.tsx`
-   - Then `manage-enrollments-dialog.tsx`
-   - Finally `enrolled-subjects-list.tsx`
+### ✅ Completed (High Priority)
+1. **✅ Enrollment Components** - All refactored to use API routes
+   - ✅ `available-subjects-list.tsx` - Uses `POST /api/enrollments`
+   - ✅ `manage-enrollments-dialog.tsx` - Uses `GET/POST/DELETE /api/enrollments`
+   - ✅ `enrolled-subjects-list.tsx` - No changes needed (presentational)
 
-2. **Refactor QR Components** - Core attendance functionality
-   - Start with `qr-generator-card.tsx`
-   - Then `qr-scanner-dialog.tsx`
+2. **✅ QR Components** - All refactored to use API routes
+   - ✅ `qr-generator-card.tsx` - Uses `POST /api/attendance-sessions`
+   - ✅ `qr-scanner-dialog.tsx` - Uses `POST /api/attendance-records`
 
-3. **Review subjects-list.tsx** - Verify if refactoring needed
+3. **✅ subjects-list.tsx** - Reviewed - No changes needed (presentational)
 
-### Later (Optional)
-4. **Review Dashboard Pages** - Decision: keep server-side calls or refactor?
-5. **Optimize API Routes** - Add caching, rate limiting if needed
-6. **Improve Error Messages** - Make user-facing errors more helpful
+### 🔄 Next Steps (Optional)
+1. **Review Dashboard Pages** - Decision: keep server-side calls or refactor?
+   - Server Components can safely use `lib/supabase/server.ts`
+   - Refactoring to API routes would be for consistency only
+2. **Local Testing** - Test all refactored components
+3. **Production Deployment** - Push to production and verify
 
 ---
 
@@ -210,4 +205,5 @@
 ---
 
 **Last Updated:** 2025-11-09
-**Current Commit:** `394b87c` - Added refactoring documentation
+**Current Status:** 🎉 **CRITICAL PATH COMPLETE** - All enrollment and QR components refactored
+**Refactored Components:** 6 components (all high-priority components done)

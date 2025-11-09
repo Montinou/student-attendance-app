@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/client"
 import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser"
 import { Camera, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
 import { QrCode } from "lucide-react"
@@ -91,92 +90,32 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
   }
 
   const handleQRCodeScanned = async (qrCode: string) => {
-    const supabase = createClient()
-
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) throw new Error("No autenticado")
-
-      // Find the session
-      const { data: session, error: sessionError } = await supabase
-        .from("attendance_sessions")
-        .select("*, subjects(*)")
-        .eq("qr_code", qrCode)
-        .maybeSingle()
-
-      if (sessionError) {
-        console.error("Session lookup error:", sessionError)
-        throw new Error("Error al buscar sesión de asistencia")
-      }
-
-      if (!session) {
-        throw new Error("Código QR inválido o no estás inscrito en esta materia")
-      }
-
-      // Check if session is still valid
-      const now = new Date()
-      const expiresAt = new Date(session.expires_at)
-      if (expiresAt <= now) {
-        throw new Error("Este código QR ha expirado")
-      }
-
-      // Check if student is enrolled
-      const { data: enrollment, error: enrollmentError } = await supabase
-        .from("enrollments")
-        .select("*")
-        .eq("student_id", user.id)
-        .eq("subject_id", session.subject_id)
-        .maybeSingle()
-
-      if (enrollmentError) {
-        console.error("Enrollment check error:", enrollmentError)
-        throw new Error("Error al verificar inscripción")
-      }
-
-      if (!enrollment) {
-        throw new Error("No estás inscrito en esta materia")
-      }
-
-      // Check if already marked attendance
-      const { data: existing, error: existingError } = await supabase
-        .from("attendance_records")
-        .select("*")
-        .eq("session_id", session.id)
-        .eq("student_id", user.id)
-        .maybeSingle()
-
-      if (existingError) {
-        console.error("Attendance check error:", existingError)
-        throw new Error("Error al verificar asistencia previa")
-      }
-
-      if (existing) {
-        throw new Error("Ya registraste tu asistencia para esta sesión")
-      }
-
-      // Record attendance
-      const { data: attendanceRecord, error: insertError } = await supabase
-        .from("attendance_records")
-        .insert({
-          session_id: session.id,
-          student_id: user.id,
-          subject_id: session.subject_id,
-        })
-        .select()
-
-      if (insertError) {
-        console.error("Attendance insert error:", insertError)
-        throw new Error("Error al registrar asistencia")
-      }
-
-      console.log("✅ Asistencia registrada exitosamente:", {
-        student_id: user.id,
-        session_id: session.id,
-        subject: session.subjects?.name,
-        timestamp: new Date().toISOString()
+      const response = await fetch("/api/attendance-records", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ qrCode }),
       })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Handle specific error status codes
+        if (response.status === 404) {
+          throw new Error("Código QR inválido")
+        } else if (response.status === 410) {
+          throw new Error("Este código QR ha expirado")
+        } else if (response.status === 403) {
+          throw new Error("No estás inscrito en esta materia")
+        } else if (response.status === 409) {
+          throw new Error("Ya registraste tu asistencia para esta sesión")
+        }
+        throw new Error(data.error || "Error al registrar asistencia")
+      }
+
+      console.log("✅ Asistencia registrada exitosamente:", data.record)
 
       setSuccess(true)
       router.refresh()

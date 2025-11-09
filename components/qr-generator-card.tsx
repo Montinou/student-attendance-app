@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createClient } from "@/lib/supabase/client"
 import type { Subject } from "@/lib/types"
 import { QrCode, Clock } from "lucide-react"
 
@@ -35,38 +34,25 @@ export function QRGeneratorCard({ subjects }: QRGeneratorCardProps) {
     setIsLoading(true)
     setError(null)
 
-    const supabase = createClient()
-
     try {
-      // Verify user is authenticated
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
-        throw new Error("Debes iniciar sesión para generar códigos QR")
+      const response = await fetch("/api/attendance-sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subjectId: selectedSubject,
+          expiresInMinutes: Number.parseInt(duration),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al generar código QR")
       }
 
-      // Generate unique QR code (UUID + timestamp)
-      const qrCode = `${selectedSubject}-${Date.now()}-${Math.random().toString(36).substring(7)}`
-      const expiresAt = new Date()
-      expiresAt.setMinutes(expiresAt.getMinutes() + Number.parseInt(duration))
-
-      // Validate expiration time is in the future
-      if (expiresAt <= new Date()) {
-        throw new Error("La fecha de expiración debe ser en el futuro")
-      }
-
-      const { data, error } = await supabase.from("attendance_sessions").insert({
-        subject_id: selectedSubject,
-        qr_code: qrCode,
-        expires_at: expiresAt.toISOString(),
-      }).select()
-
-      if (error) throw error
-
-      if (!data || data.length === 0) {
-        throw new Error("No se pudo crear la sesión de asistencia")
-      }
-
-      console.log("QR Code generado exitosamente:", qrCode)
+      console.log("QR Code generado exitosamente:", data.session.qr_code)
       router.refresh()
       setSelectedSubject("")
     } catch (err) {
