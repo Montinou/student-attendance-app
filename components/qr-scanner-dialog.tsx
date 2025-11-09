@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
-import { BrowserMultiFormatReader } from "@zxing/browser"
+import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser"
 import { Camera, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
-import { QrCode } from "lucide-react" // Import QrCode component
+import { QrCode } from "lucide-react"
 
 interface QRScannerDialogProps {
   open: boolean
@@ -20,7 +20,7 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
   const [error, setError] = useState<string | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
+  const scannerControlsRef = useRef<IScannerControls | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -31,20 +31,26 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
     return () => {
       stopScanning()
     }
-  }, [open])
+  }, [open, success])
 
   const startScanning = async () => {
+    if (!videoRef.current) {
+      setCameraError("No se pudo inicializar el video")
+      return
+    }
+
     setScanning(true)
     setError(null)
     setCameraError(null)
 
     try {
       const codeReader = new BrowserMultiFormatReader()
-      codeReaderRef.current = codeReader
 
-      const videoInputDevices = await codeReader.listVideoInputDevices()
+      // Get available video input devices
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const videoDevices = devices.filter(device => device.kind === 'videoinput')
 
-      if (videoInputDevices.length === 0) {
+      if (videoDevices.length === 0) {
         setCameraError("No se encontró ninguna cámara")
         setScanning(false)
         return
@@ -52,26 +58,34 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
 
       // Use back camera if available (for mobile)
       const selectedDevice =
-        videoInputDevices.find((device) => device.label.toLowerCase().includes("back")) || videoInputDevices[0]
+        videoDevices.find((device) => device.label.toLowerCase().includes("back")) || videoDevices[0]
 
-      await codeReader.decodeFromVideoDevice(selectedDevice.deviceId, videoRef.current!, async (result, error) => {
-        if (result) {
-          const qrCode = result.getText()
-          await handleQRCodeScanned(qrCode)
-          stopScanning()
+      // Start decoding from video device
+      const controls = await codeReader.decodeFromVideoDevice(
+        selectedDevice.deviceId,
+        videoRef.current,
+        async (result, error) => {
+          if (result) {
+            const qrCode = result.getText()
+            await handleQRCodeScanned(qrCode)
+            stopScanning()
+          }
+          // Ignore errors during scanning (they happen continuously)
         }
-      })
+      )
+
+      scannerControlsRef.current = controls
     } catch (err) {
-      console.error("[v0] Camera error:", err)
+      console.error("Camera error:", err)
       setCameraError("Error al acceder a la cámara. Por favor, permite el acceso.")
       setScanning(false)
     }
   }
 
   const stopScanning = () => {
-    if (codeReaderRef.current) {
-      codeReaderRef.current.reset()
-      codeReaderRef.current = null
+    if (scannerControlsRef.current) {
+      scannerControlsRef.current.stop()
+      scannerControlsRef.current = null
     }
     setScanning(false)
   }
@@ -145,15 +159,24 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
   }
 
   const handleClose = () => {
+    // Stop scanning first
     stopScanning()
+
+    // Reset all states
     setSuccess(false)
     setError(null)
     setCameraError(null)
+
+    // Close the dialog
     onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (!newOpen) {
+        handleClose()
+      }
+    }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -169,7 +192,7 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
               <CheckCircle2 className="h-16 w-16 text-green-600 mb-4" />
               <h3 className="text-lg font-semibold text-green-900 mb-2">¡Asistencia registrada!</h3>
               <p className="text-sm text-gray-600 text-center">Tu asistencia ha sido registrada exitosamente</p>
-              <Button onClick={handleClose} className="mt-6">
+              <Button onClick={handleClose} className="mt-6" type="button">
                 Cerrar
               </Button>
             </div>
@@ -179,10 +202,15 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
               <h3 className="text-lg font-semibold text-red-900 mb-2">Error</h3>
               <p className="text-sm text-gray-600 text-center mb-6">{error}</p>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleClose}>
+                <Button variant="outline" onClick={handleClose} type="button">
                   Cancelar
                 </Button>
-                <Button onClick={startScanning}>Intentar de nuevo</Button>
+                <Button onClick={() => {
+                  setError(null)
+                  startScanning()
+                }} type="button">
+                  Intentar de nuevo
+                </Button>
               </div>
             </div>
           ) : cameraError ? (
@@ -190,7 +218,7 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
               <AlertCircle className="h-16 w-16 text-orange-600 mb-4" />
               <h3 className="text-lg font-semibold text-orange-900 mb-2">Error de Cámara</h3>
               <p className="text-sm text-gray-600 text-center mb-6">{cameraError}</p>
-              <Button onClick={handleClose}>Cerrar</Button>
+              <Button onClick={handleClose} type="button">Cerrar</Button>
             </div>
           ) : (
             <>
@@ -206,6 +234,9 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
                 <Camera className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <p>Centra el código QR dentro del marco. El escaneo es automático.</p>
               </div>
+              <Button variant="outline" onClick={handleClose} className="w-full" type="button">
+                Cancelar
+              </Button>
             </>
           )}
         </div>
