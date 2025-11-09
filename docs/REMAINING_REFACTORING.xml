@@ -1,0 +1,604 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refactoring-instructions>
+  <metadata>
+    <title>MVC Component Refactoring - Remaining Work</title>
+    <project>Student Attendance App</project>
+    <date>2025-11-09</date>
+    <status>In Progress - Auth &amp; Subject Components Complete</status>
+  </metadata>
+
+  <context>
+    <description>
+      This document outlines the remaining work to complete the MVC refactoring
+      of the Student Attendance App. The MVC architecture has been implemented with
+      all API routes, services, and utilities in place. Auth and subject management
+      components have been refactored. This guide covers the remaining components
+      that still use direct Supabase calls.
+    </description>
+
+    <completed-work>
+      <item>✅ All 12 API routes implemented and tested</item>
+      <item>✅ All 5 service classes (Model layer) complete</item>
+      <item>✅ QR utilities (generator and scanner) implemented</item>
+      <item>✅ Middleware fixed to allow API routes</item>
+      <item>✅ Auth components refactored (login, register)</item>
+      <item>✅ Subject components refactored (create, edit, delete)</item>
+      <item>✅ Comprehensive Playwright test suite created</item>
+      <item>✅ All changes deployed to production</item>
+    </completed-work>
+
+    <production-url>https://v0-student-attendance-app-fawn.vercel.app</production-url>
+
+    <github-repo>https://github.com/Montinou/student-attendance-app</github-repo>
+
+    <latest-commit>29754fa - Component refactoring (auth + subjects)</latest-commit>
+  </context>
+
+  <remaining-components>
+    <category name="Enrollment Components">
+      <component>
+        <path>components/manage-enrollments-dialog.tsx</path>
+        <description>Dialog for teachers to manage student enrollments</description>
+        <current-implementation>Direct Supabase calls for enrollment CRUD</current-implementation>
+        <target-apis>
+          <api method="POST" endpoint="/api/enrollments">Create enrollment by email</api>
+          <api method="DELETE" endpoint="/api/enrollments/[id]">Remove enrollment</api>
+          <api method="GET" endpoint="/api/enrollments?subjectId=xxx">List enrollments</api>
+        </target-apis>
+        <refactoring-pattern>
+          <step>1. Remove import of createClient from @/lib/supabase/client</step>
+          <step>2. Replace Supabase auth.getUser() with fetch to /api/auth/me</step>
+          <step>3. Replace Supabase enrollment insert with POST to /api/enrollments</step>
+          <step>4. Replace Supabase enrollment delete with DELETE to /api/enrollments/[id]</step>
+          <step>5. Replace Supabase enrollment queries with GET to /api/enrollments</step>
+          <step>6. Update error handling to parse API error responses</step>
+        </refactoring-pattern>
+        <example><![CDATA[
+// BEFORE:
+const supabase = createClient()
+const { data: { user } } = await supabase.auth.getUser()
+const { data, error } = await supabase
+  .from("enrollments")
+  .select("*, profiles!enrollments_student_id_fkey(full_name, email)")
+  .eq("subject_id", subjectId)
+
+// AFTER:
+const response = await fetch(`/api/enrollments?subjectId=${subjectId}`)
+const data = await response.json()
+if (!response.ok) throw new Error(data.error)
+        ]]></example>
+      </component>
+
+      <component>
+        <path>components/available-subjects-list.tsx</path>
+        <description>List of subjects available for student enrollment</description>
+        <current-implementation>Direct Supabase calls to fetch subjects and check enrollment</current-implementation>
+        <target-apis>
+          <api method="GET" endpoint="/api/subjects">List all subjects</api>
+          <api method="GET" endpoint="/api/enrollments/check?studentId=xxx&amp;subjectId=xxx">Check enrollment status</api>
+          <api method="POST" endpoint="/api/enrollments">Enroll in subject</api>
+        </target-apis>
+        <refactoring-pattern>
+          <step>1. Remove createClient import</step>
+          <step>2. Replace subjects query with fetch to /api/subjects</step>
+          <step>3. Replace enrollment check with /api/enrollments/check</step>
+          <step>4. Replace enrollment creation with POST to /api/enrollments</step>
+          <step>5. Update component to use API response structure</step>
+        </refactoring-pattern>
+      </component>
+
+      <component>
+        <path>components/enrolled-subjects-list.tsx</path>
+        <description>List of subjects student is enrolled in</description>
+        <current-implementation>Direct Supabase calls to fetch enrollments</current-implementation>
+        <target-apis>
+          <api method="GET" endpoint="/api/enrollments?studentId=xxx">Get student enrollments</api>
+          <api method="DELETE" endpoint="/api/enrollments/[id]">Unenroll from subject</api>
+        </target-apis>
+        <refactoring-pattern>
+          <step>1. Remove createClient import</step>
+          <step>2. Replace enrollments query with fetch to /api/enrollments?studentId=xxx</step>
+          <step>3. Replace unenroll logic with DELETE to /api/enrollments/[id]</step>
+        </refactoring-pattern>
+      </component>
+    </category>
+
+    <category name="QR Components">
+      <component>
+        <path>components/qr-generator-card.tsx</path>
+        <description>Card component for generating QR codes for attendance sessions</description>
+        <current-implementation>Direct Supabase calls to create sessions and generate QR</current-implementation>
+        <target-apis>
+          <api method="POST" endpoint="/api/attendance-sessions">Create session and generate QR</api>
+          <api method="GET" endpoint="/api/attendance-sessions?teacherId=xxx">Get active sessions</api>
+          <api method="PATCH" endpoint="/api/attendance-sessions/[id]">End session early</api>
+        </target-apis>
+        <refactoring-pattern>
+          <step>1. Keep QR utilities import (lib/qr/generator) for client-side rendering</step>
+          <step>2. Remove createClient import</step>
+          <step>3. Replace session creation with POST to /api/attendance-sessions</step>
+          <step>4. Replace session query with GET to /api/attendance-sessions</step>
+          <step>5. Use QR code from API response instead of generating locally</step>
+          <step>6. Replace session end with PATCH to /api/attendance-sessions/[id]</step>
+        </refactoring-pattern>
+        <note>
+          The API route already handles QR generation using lib/qr/generator.
+          The component should receive the QR code from the API and use
+          lib/qr/generator.generateQRImage() to display it as a data URL.
+        </note>
+        <example><![CDATA[
+// BEFORE:
+const qrCode = QRService.generateQRCode(subjectId)
+const { data, error } = await supabase
+  .from("attendance_sessions")
+  .insert({ subject_id: subjectId, qr_code: qrCode, expires_at: ... })
+
+// AFTER:
+const response = await fetch("/api/attendance-sessions", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    subjectId: subjectId,
+    expiresInMinutes: 30
+  })
+})
+const data = await response.json()
+const qrCode = data.session.qr_code
+const qrImage = await QRService.generateQRImage(qrCode)
+        ]]></example>
+      </component>
+
+      <component>
+        <path>components/qr-scanner-dialog.tsx</path>
+        <description>Dialog for scanning QR codes to record attendance</description>
+        <current-implementation>Direct Supabase calls to validate and record attendance</current-implementation>
+        <target-apis>
+          <api method="POST" endpoint="/api/attendance-sessions/validate">Validate QR before recording</api>
+          <api method="POST" endpoint="/api/attendance-records">Record attendance</api>
+        </target-apis>
+        <refactoring-pattern>
+          <step>1. Keep QR scanner utilities import (lib/qr/scanner) for camera access</step>
+          <step>2. Remove createClient import</step>
+          <step>3. Replace validation logic with POST to /api/attendance-sessions/validate</step>
+          <step>4. Replace attendance recording with POST to /api/attendance-records</step>
+          <step>5. Handle API error responses (404, 410, 403, 409 status codes)</step>
+        </refactoring-pattern>
+        <error-handling>
+          <error status="404">QR code not found</error>
+          <error status="410">Session has expired</error>
+          <error status="403">Student not enrolled in subject</error>
+          <error status="409">Attendance already recorded</error>
+        </error-handling>
+        <example><![CDATA[
+// BEFORE:
+const { data: session } = await supabase
+  .from("attendance_sessions")
+  .select("*")
+  .eq("qr_code", scannedCode)
+  .maybeSingle()
+
+// AFTER:
+const response = await fetch("/api/attendance-sessions/validate", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    qrCode: scannedCode,
+    studentId: currentUserId
+  })
+})
+const data = await response.json()
+if (!response.ok) {
+  // Handle different error statuses
+  if (response.status === 410) {
+    // Session expired
+  } else if (response.status === 403) {
+    // Not enrolled
+  }
+}
+        ]]></example>
+      </component>
+    </category>
+
+    <category name="Dashboard Pages (Server Components)">
+      <note>
+        These are Server Components that can use the server-side Supabase client
+        from lib/supabase/server.ts OR can be refactored to use API routes with
+        fetch. Since they're server-side, both approaches are valid. For consistency
+        with the MVC pattern, using API routes is recommended.
+      </note>
+
+      <component>
+        <path>app/teacher/page.tsx</path>
+        <description>Teacher dashboard showing subjects and quick actions</description>
+        <current-implementation>Server Component using createClient from server.ts</current-implementation>
+        <target-apis>
+          <api method="GET" endpoint="/api/subjects?teacherId=xxx">Get teacher's subjects</api>
+          <api method="GET" endpoint="/api/attendance-sessions?teacherId=xxx">Get active sessions</api>
+        </target-apis>
+        <refactoring-pattern>
+          <step>1. Keep as Server Component</step>
+          <step>2. Use fetch with full URL (http://localhost:3000 in dev)</step>
+          <step>3. Or keep using createClient from server.ts (both valid)</step>
+        </refactoring-pattern>
+        <recommendation>
+          Server Components can continue using direct Supabase calls via
+          lib/supabase/server.ts since they run on the server. Refactoring to
+          API routes is optional for consistency but adds overhead.
+        </recommendation>
+      </component>
+
+      <component>
+        <path>app/student/page.tsx</path>
+        <description>Student dashboard showing enrolled subjects</description>
+        <current-implementation>Server Component using createClient from server.ts</current-implementation>
+        <target-apis>
+          <api method="GET" endpoint="/api/enrollments?studentId=xxx">Get enrollments</api>
+        </target-apis>
+        <recommendation>Optional refactoring - can keep using server-side Supabase client</recommendation>
+      </component>
+
+      <component>
+        <path>app/teacher/reports/page.tsx</path>
+        <description>Teacher reports page for viewing attendance data</description>
+        <current-implementation>Server Component using createClient from server.ts</current-implementation>
+        <target-apis>
+          <api method="GET" endpoint="/api/attendance-records?teacherId=xxx&amp;subjectId=xxx&amp;fromDate=xxx&amp;toDate=xxx">Get attendance records with filters</api>
+        </target-apis>
+        <recommendation>Optional refactoring - can keep using server-side Supabase client</recommendation>
+      </component>
+
+      <component>
+        <path>app/student/history/page.tsx</path>
+        <description>Student attendance history page</description>
+        <current-implementation>Server Component using createClient from server.ts</current-implementation>
+        <target-apis>
+          <api method="GET" endpoint="/api/attendance-records?studentId=xxx">Get student attendance history</api>
+        </target-apis>
+        <recommendation>Optional refactoring - can keep using server-side Supabase client</recommendation>
+      </component>
+    </category>
+  </remaining-components>
+
+  <refactoring-workflow>
+    <step number="1">
+      <title>Choose Component Category</title>
+      <description>Start with enrollment components, then QR components, then dashboards</description>
+      <priority>High - Enrollment components (most important for students)</priority>
+    </step>
+
+    <step number="2">
+      <title>Read Current Implementation</title>
+      <command>Read the component file to understand current Supabase usage</command>
+      <example>Read components/manage-enrollments-dialog.tsx</example>
+    </step>
+
+    <step number="3">
+      <title>Identify API Endpoints</title>
+      <description>Match Supabase queries to corresponding API endpoints</description>
+      <reference>See target-apis for each component above</reference>
+    </step>
+
+    <step number="4">
+      <title>Refactor to Use Fetch</title>
+      <pattern><![CDATA[
+// Pattern for all refactorings:
+const response = await fetch("/api/endpoint", {
+  method: "POST|GET|PATCH|DELETE",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ /* data */ }) // Only for POST/PATCH
+})
+
+const data = await response.json()
+
+if (!response.ok) {
+  throw new Error(data.error || "Error message")
+}
+
+// Use data.propertyName based on API response structure
+      ]]></pattern>
+    </step>
+
+    <step number="5">
+      <title>Remove Supabase Imports</title>
+      <description>Remove unused createClient imports</description>
+      <note>Keep QR utility imports (lib/qr/*) as they're needed for client-side rendering/scanning</note>
+    </step>
+
+    <step number="6">
+      <title>Test Locally</title>
+      <commands>
+        <command>npm run dev</command>
+        <command>Test the refactored component in the browser</command>
+        <command>Verify all CRUD operations work correctly</command>
+        <command>Check browser console for errors</command>
+      </commands>
+    </step>
+
+    <step number="7">
+      <title>Commit Changes</title>
+      <command><![CDATA[
+git add -A
+git commit -m "refactor: Convert [component-name] to use API routes
+
+- Refactored [component-name] to use /api/[endpoint]
+- Removed direct Supabase client imports
+- Updated error handling for API responses"
+      ]]></command>
+    </step>
+
+    <step number="8">
+      <title>Push to Production</title>
+      <command>git push origin main</command>
+      <note>Vercel will auto-deploy in ~100 seconds</note>
+    </step>
+
+    <step number="9">
+      <title>Verify on Production</title>
+      <command>Test the component on https://v0-student-attendance-app-fawn.vercel.app</command>
+    </step>
+  </refactoring-workflow>
+
+  <api-reference>
+    <title>Available API Endpoints</title>
+
+    <group name="Authentication">
+      <endpoint method="POST" path="/api/auth/login">
+        <request>{ email: string, password: string }</request>
+        <response>{ user: { id, email }, role: UserRole, redirectPath: string }</response>
+      </endpoint>
+      <endpoint method="POST" path="/api/auth/register">
+        <request>{ email, password, fullName, role }</request>
+        <response>{ user, session }</response>
+      </endpoint>
+      <endpoint method="GET" path="/api/auth/me">
+        <response>{ user, profile }</response>
+      </endpoint>
+    </group>
+
+    <group name="Subjects">
+      <endpoint method="GET" path="/api/subjects">
+        <query>?teacherId=xxx (optional)</query>
+        <response>{ subjects: Subject[] }</response>
+      </endpoint>
+      <endpoint method="POST" path="/api/subjects">
+        <request>{ name, code, schedule?, description? }</request>
+        <response>{ subject: Subject }</response>
+      </endpoint>
+      <endpoint method="GET" path="/api/subjects/[id]">
+        <response>{ subject: Subject }</response>
+      </endpoint>
+      <endpoint method="PATCH" path="/api/subjects/[id]">
+        <request>{ name?, code?, schedule?, description? }</request>
+        <response>{ subject: Subject }</response>
+      </endpoint>
+      <endpoint method="DELETE" path="/api/subjects/[id]">
+        <response>{ success: true }</response>
+      </endpoint>
+    </group>
+
+    <group name="Enrollments">
+      <endpoint method="GET" path="/api/enrollments">
+        <query>?studentId=xxx OR ?subjectId=xxx</query>
+        <response>{ enrollments: Enrollment[] }</response>
+      </endpoint>
+      <endpoint method="POST" path="/api/enrollments">
+        <request>{ studentId?, email?, subjectId }</request>
+        <note>Use studentId OR email to identify student</note>
+        <response>{ enrollment: Enrollment }</response>
+      </endpoint>
+      <endpoint method="DELETE" path="/api/enrollments/[id]">
+        <response>{ success: true }</response>
+      </endpoint>
+      <endpoint method="GET" path="/api/enrollments/check">
+        <query>?studentId=xxx&amp;subjectId=xxx</query>
+        <response>{ isEnrolled: boolean, enrollment?: Enrollment }</response>
+      </endpoint>
+    </group>
+
+    <group name="Attendance Sessions">
+      <endpoint method="GET" path="/api/attendance-sessions">
+        <query>?teacherId=xxx</query>
+        <response>{ sessions: Session[] }</response>
+      </endpoint>
+      <endpoint method="POST" path="/api/attendance-sessions">
+        <request>{ subjectId, expiresInMinutes }</request>
+        <response>{ session: { id, qr_code, expires_at, ... } }</response>
+        <note>QR code is generated by the API</note>
+      </endpoint>
+      <endpoint method="PATCH" path="/api/attendance-sessions/[id]">
+        <request>{ action: "end" }</request>
+        <response>{ success: true }</response>
+      </endpoint>
+      <endpoint method="POST" path="/api/attendance-sessions/validate">
+        <request>{ qrCode, studentId }</request>
+        <response>{ valid: boolean, session?, errors?: string[] }</response>
+        <errors>
+          <error>Session not found (404)</error>
+          <error>Session expired (included in errors array)</error>
+          <error>Student not enrolled (included in errors array)</error>
+          <error>Already attended (included in errors array)</error>
+        </errors>
+      </endpoint>
+    </group>
+
+    <group name="Attendance Records">
+      <endpoint method="GET" path="/api/attendance-records">
+        <query>?studentId=xxx OR ?teacherId=xxx&amp;subjectId=xxx&amp;fromDate=xxx&amp;toDate=xxx</query>
+        <response>{ records: AttendanceRecord[] }</response>
+      </endpoint>
+      <endpoint method="POST" path="/api/attendance-records">
+        <request>{ qrCode, studentId }</request>
+        <response>{ success: true, message, record }</response>
+        <errors>
+          <error status="404">QR code not found</error>
+          <error status="410">Session expired</error>
+          <error status="403">Student not enrolled</error>
+          <error status="409">Attendance already recorded</error>
+        </errors>
+      </endpoint>
+    </group>
+  </api-reference>
+
+  <testing-guide>
+    <title>Testing Refactored Components</title>
+
+    <local-testing>
+      <step>1. Start dev server: npm run dev</step>
+      <step>2. Test teacher flow:
+        - Login as teacher (agusmontoya@gmail.com / test1234)
+        - Create a subject
+        - Generate QR code
+        - Manage enrollments
+        - View reports
+      </step>
+      <step>3. Test student flow:
+        - Login as student (agusmontoya2@gmail.com / test1234)
+        - Browse subjects
+        - Enroll in subject
+        - Scan QR code
+        - View history
+      </step>
+      <step>4. Check browser console for errors</step>
+      <step>5. Verify API calls in Network tab</step>
+    </local-testing>
+
+    <production-testing>
+      <url>https://v0-student-attendance-app-fawn.vercel.app</url>
+      <step>1. Wait 100 seconds after push for deployment</step>
+      <step>2. Test same flows as local testing</step>
+      <step>3. Verify no console errors</step>
+      <step>4. Check Vercel logs if issues occur</step>
+    </production-testing>
+
+    <playwright-tests>
+      <note>Playwright tests exist but have configuration issues with webServer</note>
+      <location>tests/api/</location>
+      <files>
+        <file>auth.spec.ts</file>
+        <file>subjects.spec.ts</file>
+        <file>attendance-flow.spec.ts</file>
+      </files>
+      <issue>Tests timeout due to webServer startup conflicts</issue>
+      <workaround>Use curl or node fetch for API testing instead</workaround>
+    </playwright-tests>
+  </testing-guide>
+
+  <best-practices>
+    <practice>
+      <title>Error Handling</title>
+      <description>Always check response.ok before using data</description>
+      <code><![CDATA[
+const response = await fetch("/api/endpoint")
+const data = await response.json()
+if (!response.ok) {
+  throw new Error(data.error || "Default error message")
+}
+      ]]></code>
+    </practice>
+
+    <practice>
+      <title>Loading States</title>
+      <description>Use isLoading state for async operations</description>
+      <code><![CDATA[
+const [isLoading, setIsLoading] = useState(false)
+setIsLoading(true)
+try {
+  await fetch(...)
+} finally {
+  setIsLoading(false)
+}
+      ]]></code>
+    </practice>
+
+    <practice>
+      <title>Router Refresh</title>
+      <description>Call router.refresh() after mutations to update Server Components</description>
+      <code><![CDATA[
+await fetch("/api/subjects", { method: "POST", ... })
+router.refresh() // Revalidates Server Components
+      ]]></code>
+    </practice>
+
+    <practice>
+      <title>Type Safety</title>
+      <description>Use TypeScript types from lib/types.ts</description>
+      <code><![CDATA[
+import type { Subject, Enrollment } from "@/lib/types"
+const data: Subject = await response.json()
+      ]]></code>
+    </practice>
+
+    <practice>
+      <title>Minimal Changes</title>
+      <description>Only change what's necessary - keep UI/UX identical</description>
+      <note>This is a refactoring, not a redesign</note>
+    </practice>
+  </best-practices>
+
+  <commit-message-template>
+    <title>Commit Message Template</title>
+    <format><![CDATA[
+refactor: Convert [component-name] to use API routes
+
+- Refactored [component-name] to use /api/[endpoint]
+- Removed direct Supabase client imports
+- Updated error handling for API responses
+- [Any other specific changes]
+
+Part of MVC implementation to centralize data access.
+    ]]></format>
+    <examples>
+      <example>refactor: Convert enrollment components to use API routes</example>
+      <example>refactor: Convert QR scanner to use attendance API</example>
+      <example>refactor: Convert dashboards to use API routes</example>
+    </examples>
+  </commit-message-template>
+
+  <completion-criteria>
+    <criterion>All components removed createClient from @/lib/supabase/client</criterion>
+    <criterion>All client components use fetch to call API routes</criterion>
+    <criterion>All API calls have proper error handling</criterion>
+    <criterion>All features work identically to before refactoring</criterion>
+    <criterion>No TypeScript errors (npx tsc --noEmit passes)</criterion>
+    <criterion>All changes committed and pushed to production</criterion>
+    <criterion>Production testing confirms all flows work</criterion>
+  </completion-criteria>
+
+  <notes>
+    <note>Server Components (app/**/page.tsx) can optionally keep using lib/supabase/server.ts</note>
+    <note>QR utilities (lib/qr/*) should remain imported for client-side rendering/scanning</note>
+    <note>The middleware fix is critical - API routes won't work without it</note>
+    <note>Production URL uses the same API routes as local development</note>
+    <note>Vercel deployment takes approximately 100 seconds</note>
+  </notes>
+
+  <resources>
+    <resource>
+      <title>Architecture Documentation</title>
+      <path>docs/architecture-doc.md</path>
+      <description>Complete MVC architecture specification</description>
+    </resource>
+    <resource>
+      <title>Project README</title>
+      <path>CLAUDE.md</path>
+      <description>Project setup and development guidelines</description>
+    </resource>
+    <resource>
+      <title>API Routes Implementation</title>
+      <path>app/api/</path>
+      <description>All API route handlers</description>
+    </resource>
+    <resource>
+      <title>Service Classes</title>
+      <path>lib/services/</path>
+      <description>Model layer implementation</description>
+    </resource>
+    <resource>
+      <title>QR Utilities</title>
+      <path>lib/qr/</path>
+      <description>QR generation and scanning utilities</description>
+    </resource>
+  </resources>
+</refactoring-instructions>
