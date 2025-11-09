@@ -15,14 +15,27 @@ interface ActiveSessionsCardProps {
 
 export function ActiveSessionsCard({ sessions: initialSessions }: ActiveSessionsCardProps) {
   const [sessions, setSessions] = useState(initialSessions)
-  const [selectedSession, setSelectedSession] = useState<AttendanceSession | null>(null)
+  const [selectedSession, setSelectedSession] = useState<(AttendanceSession & { subjects?: { name: string; code: string } }) | null>(null)
   const [showQRDialog, setShowQRDialog] = useState(false)
   const router = useRouter()
 
+  // Update sessions when initialSessions changes
   useEffect(() => {
-    // Update countdown every second
+    setSessions(initialSessions)
+  }, [initialSessions])
+
+  useEffect(() => {
+    // Update countdown every second and filter expired sessions
     const interval = setInterval(() => {
-      setSessions((prev) => prev.filter((session) => new Date(session.expires_at) > new Date()))
+      const now = new Date()
+      setSessions((prev) => {
+        const filtered = prev.filter((session) => new Date(session.expires_at) > now)
+        // Only trigger re-render if something changed
+        if (filtered.length !== prev.length) {
+          return filtered
+        }
+        return prev
+      })
     }, 1000)
 
     return () => clearInterval(interval)
@@ -42,11 +55,26 @@ export function ActiveSessionsCard({ sessions: initialSessions }: ActiveSessions
   }
 
   const handleEndSession = async (sessionId: string) => {
-    const supabase = createClient()
-    await supabase.from("attendance_sessions").update({ expires_at: new Date().toISOString() }).eq("id", sessionId)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("attendance_sessions")
+        .update({ expires_at: new Date().toISOString() })
+        .eq("id", sessionId)
 
-    router.refresh()
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+      if (error) {
+        console.error("Error ending session:", error)
+        throw error
+      }
+
+      // Optimistically update UI
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+      router.refresh()
+    } catch (error) {
+      console.error("Failed to end session:", error)
+      // Refresh to show accurate state
+      router.refresh()
+    }
   }
 
   return (
