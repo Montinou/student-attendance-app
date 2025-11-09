@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { createClient } from "@/lib/supabase/client"
 
 export function CreateSubjectDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
@@ -31,23 +30,26 @@ export function CreateSubjectDialog({ children }: { children: React.ReactNode })
     setError(null)
 
     const formData = new FormData(e.currentTarget)
-    const supabase = createClient()
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) throw new Error("No autenticado")
-
-      const { error } = await supabase.from("subjects").insert({
-        name: formData.get("name") as string,
-        code: formData.get("code") as string,
-        schedule: formData.get("schedule") as string,
-        description: formData.get("description") as string,
-        teacher_id: user.id,
+      const response = await fetch("/api/subjects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.get("name") as string,
+          code: formData.get("code") as string,
+          schedule: formData.get("schedule") as string,
+          description: formData.get("description") as string,
+        }),
       })
 
-      if (error) throw error
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al crear materia")
+      }
 
       setOpen(false)
       router.refresh()

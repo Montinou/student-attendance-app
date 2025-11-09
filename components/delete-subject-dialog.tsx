@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/client"
 import type { Subject } from "@/lib/types"
 import { AlertTriangle } from "lucide-react"
 
@@ -30,12 +29,16 @@ export function DeleteSubjectDialog({ subject, open, onOpenChange }: DeleteSubje
     setIsLoading(true)
     setError(null)
 
-    const supabase = createClient()
-
     try {
-      const { error } = await supabase.from("subjects").delete().eq("id", subject.id)
+      const response = await fetch(`/api/subjects/${subject.id}`, {
+        method: "DELETE",
+      })
 
-      if (error) throw error
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al eliminar")
+      }
 
       onOpenChange(false)
       router.refresh()

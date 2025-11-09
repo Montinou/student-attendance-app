@@ -2,7 +2,6 @@
 
 import type React from "react"
 
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,39 +22,27 @@ function LoginForm() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     try {
-      // Sign in
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
       })
-      if (authError) throw authError
-      if (!authData.user) throw new Error("No se pudo obtener el usuario")
 
-      // Get user profile to determine actual role
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", authData.user.id)
-        .maybeSingle()
+      const data = await response.json()
 
-      if (profileError) {
-        console.error("Profile fetch error:", profileError)
-        throw new Error("Error al obtener el perfil de usuario")
+      if (!response.ok) {
+        throw new Error(data.error || "Error al iniciar sesión")
       }
 
-      if (!profile) {
-        throw new Error("No se encontró el perfil del usuario. Por favor contacta al administrador.")
-      }
-
-      // Redirect based on ACTUAL role from database
-      const redirectPath = profile.role === "teacher" ? "/teacher" : "/student"
-      console.log("✅ Login exitoso. Redirigiendo a:", redirectPath, "Rol:", profile.role)
-      router.push(redirectPath)
+      // Redirect based on role from API response
+      console.log("✅ Login exitoso. Redirigiendo a:", data.redirectPath, "Rol:", data.role)
+      router.push(data.redirectPath)
       router.refresh()
     } catch (error: unknown) {
       console.error("❌ Login error:", error)

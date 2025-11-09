@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { createClient } from "@/lib/supabase/client"
 import type { Subject } from "@/lib/types"
 
 interface EditSubjectDialogProps {
@@ -36,20 +35,26 @@ export function EditSubjectDialog({ subject, open, onOpenChange }: EditSubjectDi
     setError(null)
 
     const formData = new FormData(e.currentTarget)
-    const supabase = createClient()
 
     try {
-      const { error } = await supabase
-        .from("subjects")
-        .update({
+      const response = await fetch(`/api/subjects/${subject.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           name: formData.get("name") as string,
           code: formData.get("code") as string,
           schedule: formData.get("schedule") as string,
           description: formData.get("description") as string,
-        })
-        .eq("id", subject.id)
+        }),
+      })
 
-      if (error) throw error
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al actualizar")
+      }
 
       onOpenChange(false)
       router.refresh()
