@@ -1,8 +1,10 @@
 "use client"
 
+import Link from "next/link"
 import type { Enrollment, Subject } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { BookOpen, Search } from "lucide-react"
 
 interface EnrolledSubjectsListProps {
   enrollments: (Enrollment & { subjects?: Subject })[]
@@ -15,9 +17,15 @@ export function EnrolledSubjectsList({ enrollments }: EnrolledSubjectsListProps)
         <CardContent className="flex flex-col items-center justify-center py-16">
           <BookOpen className="h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No estás inscrito en ninguna materia</h3>
-          <p className="text-sm text-gray-600 text-center max-w-sm">
-            Contacta a tu profesor para que te inscriba en sus materias.
+          <p className="text-sm text-gray-600 text-center max-w-sm mb-6">
+            Explora las materias disponibles e inscríbete en las que te interesen.
           </p>
+          <Button asChild>
+            <Link href="/student/subjects">
+              <Search className="h-4 w-4 mr-2" />
+              Explorar Materias
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     )

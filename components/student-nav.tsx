@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { GraduationCap, BookOpen, History, LogOut } from "lucide-react"
+import { GraduationCap, BookOpen, History, LogOut, Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 const navItems = [
@@ -12,6 +12,11 @@ const navItems = [
     title: "Mis Materias",
     href: "/student",
     icon: BookOpen,
+  },
+  {
+    title: "Explorar Materias",
+    href: "/student/subjects",
+    icon: Search,
   },
   {
     title: "Historial",
