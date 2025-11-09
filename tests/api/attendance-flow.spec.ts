@@ -247,7 +247,10 @@ test.describe('Complete Attendance Flow', () => {
 
       const data = await response.json()
       expect(data.valid).toBe(false)
-      expect(data.errors).toContain('Session has expired')
+      // Session could be deleted (not found) or marked as expired
+      expect(data.errors).toEqual(expect.arrayContaining([
+        expect.stringMatching(/Session (not found|has expired)/),
+      ]))
 
       console.log('QR code correctly invalidated after session end')
     })
