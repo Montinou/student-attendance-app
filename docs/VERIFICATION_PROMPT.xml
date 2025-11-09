@@ -1,0 +1,634 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<verification-prompt>
+  <metadata>
+    <title>Post-Refactoring Verification Instructions for AI</title>
+    <project>Student Attendance App - MVC Refactoring</project>
+    <purpose>Comprehensive file-by-file verification after component refactoring is complete</purpose>
+    <usage>@ this file when all refactoring is done to verify the implementation</usage>
+  </metadata>
+
+  <instructions>
+    <overview>
+      You are tasked with verifying that all components in the Student Attendance App
+      have been successfully refactored from direct Supabase calls to using API routes
+      following the MVC architecture pattern. This verification should be thorough,
+      systematic, and provide a clear pass/fail report for each file.
+    </overview>
+
+    <verification-approach>
+      <step number="1">Read each file listed in the verification checklist</step>
+      <step number="2">Check for direct Supabase client imports and usage</step>
+      <step number="3">Verify proper API route usage with fetch</step>
+      <step number="4">Check error handling patterns</step>
+      <step number="5">Verify TypeScript compliance</step>
+      <step number="6">Report findings with specific line numbers</step>
+    </verification-approach>
+  </instructions>
+
+  <verification-checklist>
+    <category name="Authentication Components">
+      <file path="app/auth/login/page.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>Uses fetch to POST /api/auth/login</item>
+          <item>Proper error handling with try/catch</item>
+          <item>Loading state management (isLoading)</item>
+          <item>Redirects using router.push(data.redirectPath)</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct supabase.auth.signInWithPassword() calls</item>
+          <item>❌ Direct database queries to profiles table</item>
+          <item>❌ Missing error handling</item>
+          <item>❌ Hardcoded redirect paths instead of using API response</item>
+        </anti-patterns>
+      </file>
+
+      <file path="app/auth/register/page.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>Uses fetch to POST /api/auth/register</item>
+          <item>Sends fullName and role in request body</item>
+          <item>Proper validation before API call</item>
+          <item>Redirects to /auth/verify-email on success</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct supabase.auth.signUp() calls</item>
+          <item>❌ Client-side profile creation</item>
+          <item>❌ Missing password validation</item>
+        </anti-patterns>
+      </file>
+    </category>
+
+    <category name="Subject Management Components">
+      <file path="components/create-subject-dialog.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>Uses fetch to POST /api/subjects</item>
+          <item>Sends name, code, schedule, description in body</item>
+          <item>Does NOT send teacher_id (API handles this)</item>
+          <item>Calls router.refresh() after successful creation</item>
+          <item>Closes dialog on success: setOpen(false)</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct supabase.auth.getUser() calls</item>
+          <item>❌ Direct insert to subjects table</item>
+          <item>❌ Manually adding teacher_id to request</item>
+        </anti-patterns>
+      </file>
+
+      <file path="components/edit-subject-dialog.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>Uses fetch to PATCH /api/subjects/[id]</item>
+          <item>Uses subject.id from props in URL</item>
+          <item>Calls onOpenChange(false) after success</item>
+          <item>Calls router.refresh() after update</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct update to subjects table</item>
+          <item>❌ Missing error handling for 403/404 responses</item>
+        </anti-patterns>
+      </file>
+
+      <file path="components/delete-subject-dialog.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>Uses fetch to DELETE /api/subjects/[id]</item>
+          <item>Shows confirmation dialog before deletion</item>
+          <item>Calls router.refresh() after deletion</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct delete from subjects table</item>
+          <item>❌ No confirmation dialog</item>
+        </anti-patterns>
+      </file>
+    </category>
+
+    <category name="Enrollment Components">
+      <file path="components/manage-enrollments-dialog.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>Uses POST /api/enrollments for adding students (by email)</item>
+          <item>Uses DELETE /api/enrollments/[id] for removing students</item>
+          <item>Uses GET /api/enrollments?subjectId=xxx for listing enrollments</item>
+          <item>Proper error messages for enrollment failures</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct enrollment insert/delete queries</item>
+          <item>❌ Direct profile lookups by email</item>
+          <item>❌ Missing validation for email format</item>
+        </anti-patterns>
+      </file>
+
+      <file path="components/available-subjects-list.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>Uses GET /api/subjects for listing all subjects</item>
+          <item>Uses GET /api/enrollments/check for enrollment status</item>
+          <item>Uses POST /api/enrollments for self-enrollment</item>
+          <item>Shows enrollment button only for non-enrolled subjects</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct subjects table queries</item>
+          <item>❌ Direct enrollment checks via database</item>
+          <item>❌ Allowing enrollment without checking existing enrollment</item>
+        </anti-patterns>
+      </file>
+
+      <file path="components/enrolled-subjects-list.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>Uses GET /api/enrollments?studentId=xxx</item>
+          <item>Uses DELETE /api/enrollments/[id] for unenrolling</item>
+          <item>Shows subject details from enrollment data</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct enrollment queries with joins</item>
+          <item>❌ Direct subject lookups</item>
+        </anti-patterns>
+      </file>
+    </category>
+
+    <category name="QR Code Components">
+      <file path="components/qr-generator-card.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>KEEPS import of QRService from @/lib/qr/generator (for rendering)</item>
+          <item>Uses POST /api/attendance-sessions to create session</item>
+          <item>Receives QR code from API response (not generated locally)</item>
+          <item>Uses QRService.generateQRImage() to render QR for display</item>
+          <item>Uses GET /api/attendance-sessions?teacherId=xxx for active sessions</item>
+          <item>Uses PATCH /api/attendance-sessions/[id] to end session</item>
+          <item>Shows session expiration time</item>
+          <item>Shows attendance count in real-time</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Generating QR codes client-side (should come from API)</item>
+          <item>❌ Direct session insert/update queries</item>
+          <item>❌ Direct attendance count queries</item>
+          <item>❌ Removing QR utility imports (needed for display)</item>
+        </anti-patterns>
+        <special-note>
+          This component should RECEIVE the QR code string from the API,
+          then use QRService.generateQRImage() to convert it to a displayable image.
+          The QR code generation logic itself should not be in this component.
+        </special-note>
+      </file>
+
+      <file path="components/qr-scanner-dialog.tsx">
+        <expected-behavior>
+          <item>No import of createClient from @/lib/supabase/client</item>
+          <item>KEEPS import from @/lib/qr/scanner (for camera access)</item>
+          <item>Uses POST /api/attendance-sessions/validate to validate QR</item>
+          <item>Uses POST /api/attendance-records to record attendance</item>
+          <item>Handles different error status codes properly:
+            - 404: QR code not found
+            - 410: Session expired
+            - 403: Student not enrolled
+            - 409: Already recorded attendance
+          </item>
+          <item>Shows appropriate user-friendly error messages</item>
+          <item>Stops camera on successful scan or error</item>
+        </expected-behavior>
+        <anti-patterns>
+          <item>❌ Direct session validation queries</item>
+          <item>❌ Direct attendance record creation</item>
+          <item>❌ Not handling specific error statuses</item>
+          <item>❌ Generic error messages instead of specific ones</item>
+          <item>❌ Removing scanner utility imports (needed for camera)</item>
+        </anti-patterns>
+        <special-note>
+          This component should use the scanner utilities for camera access,
+          but all validation and data persistence should go through API routes.
+        </special-note>
+      </file>
+    </category>
+
+    <category name="List Components (Review)">
+      <file path="components/subjects-list.tsx">
+        <verification-task>
+          <item>Check if this component uses direct Supabase calls</item>
+          <item>If YES: Should be refactored to use GET /api/subjects</item>
+          <item>If NO: Mark as compliant, no changes needed</item>
+        </verification-task>
+      </file>
+    </category>
+
+    <category name="Dashboard Pages (Optional)">
+      <note>
+        Server Components can optionally keep using lib/supabase/server.ts
+        as they run server-side. Refactoring to API routes is optional for consistency.
+      </note>
+
+      <file path="app/teacher/page.tsx">
+        <current-status>Server Component - Can use lib/supabase/server.ts</current-status>
+        <optional-refactoring>
+          <item>Could use GET /api/subjects?teacherId=xxx</item>
+          <item>Could use GET /api/attendance-sessions?teacherId=xxx</item>
+          <item>Decision: Project owner's preference</item>
+        </optional-refactoring>
+      </file>
+
+      <file path="app/student/page.tsx">
+        <current-status>Server Component - Can use lib/supabase/server.ts</current-status>
+        <optional-refactoring>
+          <item>Could use GET /api/enrollments?studentId=xxx</item>
+          <item>Decision: Project owner's preference</item>
+        </optional-refactoring>
+      </file>
+
+      <file path="app/teacher/reports/page.tsx">
+        <current-status>Server Component - Can use lib/supabase/server.ts</current-status>
+        <optional-refactoring>
+          <item>Could use GET /api/attendance-records with filters</item>
+          <item>Decision: Project owner's preference</item>
+        </optional-refactoring>
+      </file>
+
+      <file path="app/student/history/page.tsx">
+        <current-status>Server Component - Can use lib/supabase/server.ts</current-status>
+        <optional-refactoring>
+          <item>Could use GET /api/attendance-records?studentId=xxx</item>
+          <item>Decision: Project owner's preference</item>
+        </optional-refactoring>
+      </file>
+    </category>
+  </verification-checklist>
+
+  <common-patterns-to-verify>
+    <pattern name="Error Handling">
+      <correct><![CDATA[
+try {
+  const response = await fetch("/api/endpoint", { ... })
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || "Default error message")
+  }
+
+  // Use data...
+} catch (error) {
+  setError(error instanceof Error ? error.message : "An error occurred")
+} finally {
+  setIsLoading(false)
+}
+      ]]></correct>
+      <incorrect><![CDATA[
+// Missing response.ok check
+const response = await fetch("/api/endpoint")
+const data = await response.json()
+// Using data without checking for errors
+
+// No try/catch
+const response = await fetch("/api/endpoint")
+
+// Not handling JSON parsing errors
+const data = await response.json() // Could throw
+      ]]></incorrect>
+    </pattern>
+
+    <pattern name="Loading States">
+      <correct><![CDATA[
+const [isLoading, setIsLoading] = useState(false)
+
+const handleAction = async () => {
+  setIsLoading(true)
+  try {
+    await fetch(...)
+  } finally {
+    setIsLoading(false) // Always reset loading state
+  }
+}
+
+<Button disabled={isLoading}>
+  {isLoading ? "Loading..." : "Submit"}
+</Button>
+      ]]></correct>
+      <incorrect><![CDATA[
+// No loading state
+await fetch(...)
+
+// Loading state not reset on error
+setIsLoading(true)
+await fetch(...)
+setIsLoading(false) // Won't run if fetch throws
+      ]]></incorrect>
+    </pattern>
+
+    <pattern name="Router Refresh">
+      <correct><![CDATA[
+const response = await fetch("/api/subjects", {
+  method: "POST",
+  // ...
+})
+
+if (response.ok) {
+  router.refresh() // Revalidate Server Components
+  onClose()
+}
+      ]]></correct>
+      <incorrect><![CDATA[
+// Missing router.refresh() after mutation
+const response = await fetch("/api/subjects", { method: "POST" })
+onClose() // Server Components won't update
+      ]]></incorrect>
+    </pattern>
+
+    <pattern name="Import Cleanup">
+      <correct><![CDATA[
+// Client component - NO Supabase imports
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+// No createClient import
+
+// QR component - Keep utilities
+import { QRService } from "@/lib/qr/generator" // OK - needed for rendering
+import { ScannerService } from "@/lib/qr/scanner" // OK - needed for camera
+      ]]></correct>
+      <incorrect><![CDATA[
+// Client component with Supabase import
+import { createClient } from "@/lib/supabase/client" // ❌ Should be removed
+
+// Missing QR utilities in QR components
+// Missing import of QRService in qr-generator-card.tsx ❌
+      ]]></incorrect>
+    </pattern>
+  </common-patterns-to-verify>
+
+  <verification-report-format>
+    <structure>
+      For each file, provide a report in this format:
+
+      FILE: [path]
+      STATUS: ✅ PASS | ⚠️ WARNING | ❌ FAIL
+
+      FINDINGS:
+      - [Specific finding with line numbers if applicable]
+      - [Another finding]
+
+      ISSUES (if any):
+      - [Issue description with line number]
+      - [Suggested fix]
+
+      ANTI-PATTERNS DETECTED (if any):
+      - [Anti-pattern with line number]
+      - [Why it's problematic]
+
+      ---
+    </structure>
+
+    <example><![CDATA[
+FILE: components/create-subject-dialog.tsx
+STATUS: ✅ PASS
+
+FINDINGS:
+- Line 5: No createClient import ✅
+- Line 36-46: Uses fetch to POST /api/subjects ✅
+- Line 50-52: Proper error handling with response.ok check ✅
+- Line 55: Calls router.refresh() after success ✅
+- Line 56: Closes dialog with setOpen(false) ✅
+
+ISSUES: None
+
+---
+
+FILE: components/qr-generator-card.tsx
+STATUS: ❌ FAIL
+
+FINDINGS:
+- Line 8: QRService import present ✅ (Required for display)
+- Line 45: Uses POST /api/attendance-sessions ✅
+
+ISSUES:
+- Line 52: Generating QR code client-side with QRService.generateQRCode() ❌
+  Should receive QR code from API response instead
+  Suggested fix: Use data.session.qr_code from API response
+
+- Line 78: Direct Supabase query to get active sessions ❌
+  Should use GET /api/attendance-sessions?teacherId=xxx
+
+ANTI-PATTERNS DETECTED:
+- Line 52: Client-side QR generation duplicates server logic
+- Line 78-82: Direct database access from client component
+
+---
+    ]]></example>
+  </verification-report-format>
+
+  <final-summary-format>
+    <structure>
+      After verifying all files, provide a summary:
+
+      ## VERIFICATION SUMMARY
+
+      Total Files Verified: [number]
+      ✅ Passed: [number]
+      ⚠️ Warnings: [number]
+      ❌ Failed: [number]
+
+      ## CRITICAL ISSUES
+      [List any blocking issues that must be fixed]
+
+      ## WARNINGS
+      [List any non-blocking issues or improvements]
+
+      ## COMPLIANCE CHECKLIST
+      - [ ] No direct Supabase client imports in client components
+      - [ ] All API routes used correctly with fetch
+      - [ ] Proper error handling on all API calls
+      - [ ] Loading states implemented
+      - [ ] Router.refresh() called after mutations
+      - [ ] QR utilities kept where needed
+      - [ ] TypeScript types used correctly
+
+      ## RECOMMENDATION
+      [READY FOR PRODUCTION | NEEDS FIXES | NEEDS REVIEW]
+
+      [Overall assessment and any final recommendations]
+    </structure>
+  </final-summary-format>
+
+  <automated-checks>
+    <title>Run These Automated Checks</title>
+
+    <check name="TypeScript Compilation">
+      <command>npx tsc --noEmit</command>
+      <expected>0 errors</expected>
+      <action-if-fails>Review and fix all TypeScript errors before proceeding</action-if-fails>
+    </check>
+
+    <check name="ESLint">
+      <command>npm run lint</command>
+      <expected>0 errors (warnings acceptable)</expected>
+      <action-if-fails>Fix linting errors, especially unused imports</action-if-fails>
+    </check>
+
+    <check name="Search for Direct Supabase Usage">
+      <command>grep -r "createClient" app/ components/ --include="*.tsx" --include="*.ts" --exclude-dir=api</command>
+      <expected>Only matches in lib/supabase/* and QR utilities allowed</expected>
+      <action-if-fails>Investigate each match - may indicate incomplete refactoring</action-if-fails>
+    </check>
+
+    <check name="Search for Direct Auth Calls">
+      <command>grep -r "supabase.auth" components/ app/auth/ --include="*.tsx"</command>
+      <expected>No matches (all auth should go through API)</expected>
+      <action-if-fails>Refactor direct auth calls to use /api/auth endpoints</action-if-fails>
+    </check>
+
+    <check name="Search for Direct Database Queries">
+      <command>grep -r "\.from(" components/ app/auth/ --include="*.tsx" --exclude="*.spec.tsx"</command>
+      <expected>No matches in client components</expected>
+      <action-if-fails>Refactor direct queries to use API routes</action-if-fails>
+    </check>
+  </automated-checks>
+
+  <manual-testing-checklist>
+    <title>Manual Testing After Verification</title>
+
+    <test-scenario name="Teacher Flow">
+      <step>1. Login as teacher (agusmontoya@gmail.com / test1234)</step>
+      <step>2. Create a new subject</step>
+      <step>3. Edit the subject</step>
+      <step>4. Add a student by email to the subject</step>
+      <step>5. Generate a QR code for attendance</step>
+      <step>6. View active sessions</step>
+      <step>7. End the session early</step>
+      <step>8. View attendance reports</step>
+      <step>9. Delete the test subject</step>
+      <step>10. Check browser console for errors</step>
+    </test-scenario>
+
+    <test-scenario name="Student Flow">
+      <step>1. Login as student (agusmontoya2@gmail.com / test1234)</step>
+      <step>2. Browse available subjects</step>
+      <step>3. Enroll in a subject</step>
+      <step>4. View enrolled subjects</step>
+      <step>5. Scan a QR code (use camera or paste code)</step>
+      <step>6. Try scanning the same QR code again (should fail)</step>
+      <step>7. View attendance history</step>
+      <step>8. Unenroll from the subject</step>
+      <step>9. Check browser console for errors</step>
+    </test-scenario>
+
+    <test-scenario name="Error Handling">
+      <step>1. Try to scan an invalid QR code</step>
+      <step>2. Try to scan an expired QR code</step>
+      <step>3. Try to scan without being enrolled</step>
+      <step>4. Try to create subject with missing fields</step>
+      <step>5. Try to enroll with invalid email</step>
+      <step>6. Verify all error messages are user-friendly</step>
+    </test-scenario>
+
+    <test-scenario name="Network Tab Verification">
+      <step>1. Open browser DevTools → Network tab</step>
+      <step>2. Perform each action (create subject, enroll, scan QR, etc.)</step>
+      <step>3. Verify all requests go to /api/* endpoints</step>
+      <step>4. Verify no direct Supabase REST API calls</step>
+      <step>5. Check response status codes are correct</step>
+      <step>6. Verify response payloads match expected format</step>
+    </test-scenario>
+  </manual-testing-checklist>
+
+  <production-verification>
+    <title>Production Deployment Verification</title>
+
+    <deployment-process>
+      <step>1. Push changes to main branch</step>
+      <step>2. Wait 100 seconds for Vercel deployment</step>
+      <step>3. Check deployment status:
+        vercel ls --token xlZfF4ANIRFDqJDBLSlAWRMp
+      </step>
+      <step>4. Verify latest deployment is Ready</step>
+    </deployment-process>
+
+    <production-tests>
+      <url>https://v0-student-attendance-app-fawn.vercel.app</url>
+
+      <test>1. Login as both teacher and student</test>
+      <test>2. Verify all critical features work</test>
+      <test>3. Check browser console for errors</test>
+      <test>4. Test on mobile device (for QR scanning)</test>
+      <test>5. Verify API responses in Network tab</test>
+      <test>6. Check Vercel logs for server errors</test>
+    </production-tests>
+
+    <vercel-logs-check>
+      <command>vercel logs --token xlZfF4ANIRFDqJDBLSlAWRMp</command>
+      <look-for>
+        <item>No 500 errors</item>
+        <item>No unhandled exceptions</item>
+        <item>API routes responding correctly</item>
+        <item>Middleware not blocking requests</item>
+      </look-for>
+    </vercel-logs-check>
+  </production-verification>
+
+  <completion-criteria>
+    <title>Refactoring Complete When:</title>
+
+    <criterion>✅ All client components use API routes (no direct Supabase calls)</criterion>
+    <criterion>✅ No imports of createClient from @/lib/supabase/client in components</criterion>
+    <criterion>✅ All QR utilities preserved where needed</criterion>
+    <criterion>✅ TypeScript compilation passes with no errors</criterion>
+    <criterion>✅ ESLint passes with no errors</criterion>
+    <criterion>✅ All automated checks pass</criterion>
+    <criterion>✅ All manual test scenarios pass locally</criterion>
+    <criterion>✅ All manual test scenarios pass on production</criterion>
+    <criterion>✅ No console errors in browser</criterion>
+    <criterion>✅ Network tab shows only /api/* calls (no direct Supabase calls)</criterion>
+    <criterion>✅ All features work identically to before refactoring</criterion>
+    <criterion>✅ All code committed and pushed to GitHub</criterion>
+    <criterion>✅ Production deployment successful and verified</criterion>
+  </completion-criteria>
+
+  <usage-instructions>
+    <title>How to Use This Verification Prompt</title>
+
+    <step number="1">
+      <instruction>Complete all remaining refactoring work using REMAINING_REFACTORING.xml</instruction>
+    </step>
+
+    <step number="2">
+      <instruction>When you believe all refactoring is complete, @ this file (VERIFICATION_PROMPT.xml)</instruction>
+      <example>@docs/VERIFICATION_PROMPT.xml - Please verify all refactored files</example>
+    </step>
+
+    <step number="3">
+      <instruction>The AI will systematically read and verify each file</instruction>
+      <note>This may take several interactions due to the number of files</note>
+    </step>
+
+    <step number="4">
+      <instruction>Review the verification report and fix any issues found</instruction>
+    </step>
+
+    <step number="5">
+      <instruction>Run automated checks locally</instruction>
+      <commands>
+        <command>npx tsc --noEmit</command>
+        <command>npm run lint</command>
+        <command>grep -r "createClient" components/ app/auth/ --include="*.tsx"</command>
+      </commands>
+    </step>
+
+    <step number="6">
+      <instruction>Perform manual testing following the test scenarios</instruction>
+    </step>
+
+    <step number="7">
+      <instruction>Push to production and verify deployment</instruction>
+    </step>
+
+    <step number="8">
+      <instruction>If all checks pass, refactoring is complete! 🎉</instruction>
+    </step>
+  </usage-instructions>
+
+  <notes>
+    <note>This verification should be thorough but efficient - focus on critical issues</note>
+    <note>Server Components (app/**/page.tsx) using lib/supabase/server.ts are acceptable</note>
+    <note>QR utility imports (lib/qr/*) should be preserved in QR components</note>
+    <note>The goal is MVC compliance, not perfection - pragmatic approach is fine</note>
+    <note>If in doubt about a pattern, check the already-refactored auth/subject components as reference</note>
+  </notes>
+</verification-prompt>
