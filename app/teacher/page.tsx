@@ -15,7 +15,18 @@ export default async function TeacherDashboard() {
     redirect("/auth/login?role=teacher")
   }
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+
+  // Verify user has teacher role - redirect to their correct dashboard if not
+  if (!profile) {
+    // Profile doesn't exist - force logout
+    redirect("/auth/login?role=teacher&error=no-profile")
+  }
+
+  if (profile.role !== "teacher") {
+    // User is not a teacher, send them to student dashboard
+    redirect("/student")
+  }
 
   const { data: subjects } = await supabase
     .from("subjects")

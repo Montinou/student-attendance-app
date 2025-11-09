@@ -28,15 +28,37 @@ function LoginForm() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Sign in
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-      if (error) throw error
+      if (authError) throw authError
+      if (!authData.user) throw new Error("No se pudo obtener el usuario")
 
-      // Redirect based on role
-      router.push(role === "teacher" ? "/teacher" : "/student")
+      // Get user profile to determine actual role
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Profile fetch error:", profileError)
+        throw new Error("Error al obtener el perfil de usuario")
+      }
+
+      if (!profile) {
+        throw new Error("No se encontró el perfil del usuario. Por favor contacta al administrador.")
+      }
+
+      // Redirect based on ACTUAL role from database
+      const redirectPath = profile.role === "teacher" ? "/teacher" : "/student"
+      console.log("✅ Login exitoso. Redirigiendo a:", redirectPath, "Rol:", profile.role)
+      router.push(redirectPath)
+      router.refresh()
     } catch (error: unknown) {
+      console.error("❌ Login error:", error)
       setError(error instanceof Error ? error.message : "Ocurrió un error")
     } finally {
       setIsLoading(false)

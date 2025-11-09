@@ -40,7 +40,15 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from auth pages
   if (user && (request.nextUrl.pathname.startsWith("/auth") || request.nextUrl.pathname === "/")) {
     // Get user role to redirect appropriately
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Middleware profile fetch error:", profileError)
+    }
 
     const url = request.nextUrl.clone()
     url.pathname = profile?.role === "teacher" ? "/teacher" : "/student"
