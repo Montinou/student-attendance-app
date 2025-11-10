@@ -159,19 +159,20 @@
 - [x] CORS is properly configured
 
 ### Test Suite Verification
-- [x] All Playwright E2E tests passing (32/32 tests total)
+- [x] All Playwright E2E tests passing (33/33 tests total)
 - [x] **API Tests (26/26):**
   - Auth tests (7/7): Login, registration, logout
   - Subjects tests (6/6): CRUD operations
   - Attendance flow tests (13/13): Complete end-to-end flow
   - New endpoint tests: logout, sessionId parameter
-- [x] **UI Tests (6/6):** Page Object Model (POM) pattern
+- [x] **UI Tests (7/7):** Page Object Model (POM) pattern
   - Teacher dashboard: Load, display subjects, verify UI elements
   - Student dashboard: Load, display enrollments, verify UI elements
   - Teacher reports: Load, display filters/table
   - Student history: Load, display attendance records
   - Authorization: Role-based redirects (2 tests)
-- [x] **Page Objects Created:** 5 POM classes for reusable test structure
+  - QR infinite loop: Integration test verifying no infinite loop + QR renders
+- [x] **Page Objects Created:** 6 POM classes for reusable test structure
 
 ### Code Quality Verification
 - [x] No direct Supabase client imports in client components
@@ -266,11 +267,28 @@
 **Last Updated:** 2025-11-10
 **Current Status:** 🎉 **100% COMPLETE - ALL COMPONENTS REFACTORED + FULL TEST COVERAGE!**
 **Refactored Components:** 18 total (14 client + 4 server components)
-**Test Coverage:** 32/32 Playwright tests passing (26 API + 6 UI)
+**Test Coverage:** 33/33 Playwright tests passing (26 API + 7 UI)
 **Architecture:** Full MVC pattern with API routes as data access layer
 **Test Pattern:** Page Object Model (POM) for UI tests
+**Bug Fixes:** Infinite loop in QR dialog fixed + verified with integration test
 
 ## 📝 Recent Updates
+
+### 2025-11-10: QR Infinite Loop Fix + Verification Tests 🎉
+- 🐛 **Fixed critical infinite loop bug** in `view-qr-dialog.tsx`:
+  - **Root Cause**: `loadAttendance` callback recreated on every render when `session` prop changed
+  - **Solution**: Use `useRef` for stable values in polling, `session.qr_code` directly for QR rendering
+  - **Impact**: Prevented browser freezing, excessive API requests (now 1.25 req/sec as expected)
+- ✅ **Created TeacherQRPage** Page Object with `verifyNoInfiniteLoop()` method
+- ✅ **Created qr-infinite-loop.spec.ts** - Integration test that:
+  - Creates subject and session via API
+  - Opens QR dialog and monitors API requests for 4 seconds
+  - Verifies ≤10 requests (actual: 5 requests = perfect)
+  - Confirms QR renders correctly with time/attendance updates
+  - Cleans up test data
+- ✅ **Created qr-generation.spec.ts** - Basic QR UI flow tests
+- ✅ **All tests passing**: 33/33 (26 API + 7 UI)
+- ✅ **Deployed and verified** on production
 
 ### 2025-11-10: UI Test Suite with Page Object Model 🎉
 - ✅ Created 5 Page Object classes for reusable test structure:
