@@ -32,29 +32,43 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
 
   // Generate QR code when dialog opens
   useEffect(() => {
-    if (!open || !canvasRef.current) return
+    if (!open) return
 
-    // Clear any previous error
-    setQrError(null)
+    // Wait for canvas to be mounted in DOM
+    const renderQR = () => {
+      if (!canvasRef.current) {
+        // Canvas not ready yet, try again
+        requestAnimationFrame(renderQR)
+        return
+      }
 
-    QRCode.toCanvas(
-      canvasRef.current,
-      session.qr_code, // Use session prop directly for QR generation
-      {
-        width: 300,
-        margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
+      // Clear any previous error
+      setQrError(null)
+
+      QRCode.toCanvas(
+        canvasRef.current,
+        session.qr_code, // Use session prop directly for QR generation
+        {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
         },
-      },
-      (error) => {
-        if (error) {
-          console.error("QR Generation Error:", error)
-          setQrError("Error al generar código QR")
-        }
-      },
-    )
+        (error) => {
+          if (error) {
+            console.error("QR Generation Error:", error)
+            setQrError("Error al generar código QR")
+          } else {
+            console.log("✅ QR rendered successfully to canvas")
+          }
+        },
+      )
+    }
+
+    // Start rendering (will wait for canvas to be ready)
+    renderQR()
   }, [open, session.qr_code]) // Re-generate if QR code changes
 
   // Memoized function to load attendance - stable reference
