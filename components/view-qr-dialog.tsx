@@ -39,7 +39,7 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
 
     QRCode.toCanvas(
       canvasRef.current,
-      qrCodeRef.current,
+      session.qr_code, // Use session prop directly for QR generation
       {
         width: 300,
         margin: 2,
@@ -55,7 +55,7 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
         }
       },
     )
-  }, [open])
+  }, [open, session.qr_code]) // Re-generate if QR code changes
 
   // Memoized function to load attendance - stable reference
   const loadAttendance = useCallback(async () => {
