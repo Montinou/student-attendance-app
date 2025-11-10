@@ -18,19 +18,30 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const [videoReady, setVideoReady] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const scannerControlsRef = useRef<IScannerControls | null>(null)
   const router = useRouter()
 
+  // Callback ref to know when video element is mounted
+  const videoCallbackRef = (element: HTMLVideoElement | null) => {
+    if (element) {
+      videoRef.current = element
+      setVideoReady(true)
+    } else {
+      setVideoReady(false)
+    }
+  }
+
   useEffect(() => {
-    if (open && !success) {
+    if (open && !success && videoReady) {
       startScanning()
     }
 
     return () => {
       stopScanning()
     }
-  }, [open, success])
+  }, [open, success, videoReady])
 
   const startScanning = async () => {
     if (!videoRef.current) {
@@ -204,7 +215,7 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
           ) : (
             <>
               <div className="relative aspect-square bg-black rounded-lg overflow-hidden">
-                <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline />
+                <video ref={videoCallbackRef} className="w-full h-full object-cover" autoPlay playsInline />
                 {scanning && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-48 h-48 border-2 border-white rounded-lg"></div>
