@@ -19,9 +19,16 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
   const [qrError, setQrError] = useState<string | null>(null)
 
   // Extract stable values to avoid unnecessary re-renders
-  const sessionId = session.id
-  const qrCode = session.qr_code
-  const expiresAt = session.expires_at
+  const sessionIdRef = useRef(session.id)
+  const qrCodeRef = useRef(session.qr_code)
+  const expiresAtRef = useRef(session.expires_at)
+
+  // Update refs when session changes
+  useEffect(() => {
+    sessionIdRef.current = session.id
+    qrCodeRef.current = session.qr_code
+    expiresAtRef.current = session.expires_at
+  }, [session.id, session.qr_code, session.expires_at])
 
   // Generate QR code when dialog opens
   useEffect(() => {
@@ -32,7 +39,7 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
 
     QRCode.toCanvas(
       canvasRef.current,
-      qrCode,
+      qrCodeRef.current,
       {
         width: 300,
         margin: 2,
@@ -48,12 +55,12 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
         }
       },
     )
-  }, [qrCode, open])
+  }, [open])
 
-  // Memoized function to load attendance
+  // Memoized function to load attendance - stable reference
   const loadAttendance = useCallback(async () => {
     try {
-      const response = await fetch(`/api/attendance-records?sessionId=${sessionId}`)
+      const response = await fetch(`/api/attendance-records?sessionId=${sessionIdRef.current}`)
       if (response.ok) {
         const data = await response.json()
         setAttendanceCount(data.records?.length || 0)
@@ -61,7 +68,7 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
     } catch (error) {
       console.error("Error loading attendance:", error)
     }
-  }, [sessionId])
+  }, []) // Empty deps - use refs for values
 
   // Handle countdown and attendance updates
   useEffect(() => {
@@ -78,7 +85,7 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
     // Update countdown and attendance
     const interval = setInterval(() => {
       const now = new Date()
-      const expires = new Date(expiresAt)
+      const expires = new Date(expiresAtRef.current)
       const diff = expires.getTime() - now.getTime()
 
       if (diff <= 0) {
@@ -98,7 +105,7 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
     return () => {
       clearInterval(interval)
     }
-  }, [open, expiresAt, loadAttendance])
+  }, [open, loadAttendance]) // Removed expiresAt - use ref instead
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
