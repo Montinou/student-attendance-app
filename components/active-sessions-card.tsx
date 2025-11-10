@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import type { AttendanceSession } from "@/lib/types"
 import { Clock, Eye, X } from "lucide-react"
 import { ViewQRDialog } from "./view-qr-dialog"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 interface ActiveSessionsCardProps {
@@ -56,15 +55,17 @@ export function ActiveSessionsCard({ sessions: initialSessions }: ActiveSessions
 
   const handleEndSession = async (sessionId: string) => {
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from("attendance_sessions")
-        .update({ expires_at: new Date().toISOString() })
-        .eq("id", sessionId)
+      const response = await fetch(`/api/attendance-sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "end" }),
+      })
 
-      if (error) {
-        console.error("Error ending session:", error)
-        throw error
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Error al finalizar sesión")
       }
 
       // Optimistically update UI

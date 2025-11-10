@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { GraduationCap, BookOpen, QrCode, BarChart3, LogOut } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 const navItems = [
   {
@@ -30,9 +29,14 @@ export function TeacherNav() {
   const router = useRouter()
 
   const handleLogout = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/")
+    try {
+      await fetch("/api/auth/logout", { method: "POST" })
+      router.push("/")
+    } catch (error) {
+      console.error("Logout error:", error)
+      // Still redirect to home on error
+      router.push("/")
+    }
   }
 
   return (

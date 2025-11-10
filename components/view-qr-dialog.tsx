@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { AttendanceSession } from "@/lib/types"
 import QRCode from "qrcode"
-import { createClient } from "@/lib/supabase/client"
 import { Users, Clock, AlertCircle } from "lucide-react"
 
 interface ViewQRDialogProps {
@@ -53,9 +52,15 @@ export function ViewQRDialog({ session, open, onOpenChange }: ViewQRDialogProps)
 
   // Memoized function to load attendance
   const loadAttendance = useCallback(async () => {
-    const supabase = createClient()
-    const { data } = await supabase.from("attendance_records").select("*").eq("session_id", sessionId)
-    setAttendanceCount(data?.length || 0)
+    try {
+      const response = await fetch(`/api/attendance-records?sessionId=${sessionId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setAttendanceCount(data.records?.length || 0)
+      }
+    } catch (error) {
+      console.error("Error loading attendance:", error)
+    }
   }, [sessionId])
 
   // Handle countdown and attendance updates
