@@ -16,7 +16,13 @@ export function ActiveSessionsCard({ sessions: initialSessions }: ActiveSessions
   const [sessions, setSessions] = useState(initialSessions)
   const [selectedSession, setSelectedSession] = useState<(AttendanceSession & { subjects?: { name: string; code: string } }) | null>(null)
   const [showQRDialog, setShowQRDialog] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
+
+  // Prevent hydration mismatch by only rendering time on client
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Update sessions when initialSessions changes
   useEffect(() => {
@@ -100,7 +106,7 @@ export function ActiveSessionsCard({ sessions: initialSessions }: ActiveSessions
                     <p className="text-sm text-gray-600 font-mono">{session.subjects?.code}</p>
                     <div className="flex items-center gap-1 mt-1 text-sm text-gray-500">
                       <Clock className="h-3 w-3" />
-                      {getTimeRemaining(session.expires_at)}
+                      {isMounted ? getTimeRemaining(session.expires_at) : "Cargando..."}
                     </div>
                   </div>
                   <div className="flex gap-2">
