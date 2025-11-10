@@ -45,7 +45,15 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
     try {
       const codeReader = new BrowserMultiFormatReader()
 
-      // Get available video input devices
+      // Request camera permission first by getting user media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } }
+      })
+
+      // Stop the temporary stream as zxing will create its own
+      stream.getTracks().forEach(track => track.stop())
+
+      // Now enumerate devices (labels will be available after permission granted)
       const devices = await navigator.mediaDevices.enumerateDevices()
       const videoDevices = devices.filter(device => device.kind === 'videoinput')
 
@@ -76,7 +84,13 @@ export function QRScannerDialog({ open, onOpenChange }: QRScannerDialogProps) {
       scannerControlsRef.current = controls
     } catch (err) {
       console.error("Camera error:", err)
-      setCameraError("Error al acceder a la cámara. Por favor, permite el acceso.")
+      if (err instanceof Error && err.name === "NotAllowedError") {
+        setCameraError("Permiso de cámara denegado. Por favor, permite el acceso a la cámara.")
+      } else if (err instanceof Error && err.name === "NotFoundError") {
+        setCameraError("No se encontró ninguna cámara en tu dispositivo.")
+      } else {
+        setCameraError("Error al acceder a la cámara. Por favor, permite el acceso.")
+      }
       setScanning(false)
     }
   }
