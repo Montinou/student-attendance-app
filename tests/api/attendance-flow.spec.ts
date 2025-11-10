@@ -213,6 +213,24 @@ test.describe('Complete Attendance Flow', () => {
       console.log('Student can view their attendance history')
     })
 
+    test('Step 9b: Get attendance count for specific session', async ({ request }) => {
+      await authenticateUser(request, 'agusmontoya@gmail.com', 'test1234')
+
+      const response = await request.get(
+        `${BASE_URL}/api/attendance-records?sessionId=${sessionId}`
+      )
+
+      expect(response.status()).toBe(200)
+
+      const data = await response.json()
+      expect(data).toHaveProperty('records')
+      expect(Array.isArray(data.records)).toBeTruthy()
+      expect(data.records.length).toBe(1) // Should have exactly 1 record for this session
+      expect(data.records[0].session_id).toBe(sessionId)
+
+      console.log('Can query attendance by sessionId for real-time count')
+    })
+
     test('Step 10: Teacher ends the session early', async ({ request }) => {
       await authenticateUser(request, 'agusmontoya@gmail.com', 'test1234')
 

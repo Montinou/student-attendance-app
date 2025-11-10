@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const studentId = searchParams.get("studentId")
     const teacherId = searchParams.get("teacherId")
+    const sessionId = searchParams.get("sessionId")
     const subjectId = searchParams.get("subjectId")
     const fromDate = searchParams.get("fromDate")
     const toDate = searchParams.get("toDate")
@@ -39,9 +40,12 @@ export async function GET(request: NextRequest) {
           toDate: toDate || undefined,
         }
       )
+    } else if (sessionId) {
+      // Get records for a specific session (real-time attendance count)
+      records = await AttendanceRecordService.getRecordsBySession(sessionId)
     } else {
       return NextResponse.json(
-        { error: "studentId or teacherId parameter required" },
+        { error: "studentId, teacherId, or sessionId parameter required" },
         { status: 400 }
       )
     }

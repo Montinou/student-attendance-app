@@ -93,4 +93,24 @@ test.describe('Auth API Routes', () => {
     const data = await response.json()
     expect(data.error).toContain('Invalid role')
   })
+
+  test('POST /api/auth/logout - successful logout', async ({ request }) => {
+    // First login to establish a session
+    const loginResponse = await request.post(`${BASE_URL}/api/auth/login`, {
+      data: {
+        email: 'agusmontoya@gmail.com',
+        password: 'test1234',
+      },
+    })
+
+    expect(loginResponse.status()).toBe(200)
+
+    // Now logout
+    const logoutResponse = await request.post(`${BASE_URL}/api/auth/logout`)
+
+    expect(logoutResponse.status()).toBe(200)
+
+    const data = await logoutResponse.json()
+    expect(data).toHaveProperty('success', true)
+  })
 })
