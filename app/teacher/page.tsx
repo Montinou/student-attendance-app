@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { SubjectsList } from "@/components/subjects-list"
 import { CreateSubjectDialog } from "@/components/create-subject-dialog"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
+import type { Subject } from "@/lib/types"
 
 export default async function TeacherDashboard() {
   const supabase = await createClient()
@@ -28,11 +30,24 @@ export default async function TeacherDashboard() {
     redirect("/student")
   }
 
-  const { data: subjects } = await supabase
-    .from("subjects")
-    .select("*")
-    .eq("teacher_id", user.id)
-    .order("created_at", { ascending: false })
+  // Fetch subjects from API route
+  const headersList = await headers()
+  const host = headersList.get("host") || "localhost:3000"
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http"
+  const baseUrl = `${protocol}://${host}`
+
+  const response = await fetch(`${baseUrl}/api/subjects?teacherId=${user.id}`, {
+    cache: "no-store",
+    headers: {
+      Cookie: headersList.get("cookie") || "",
+    },
+  })
+
+  let subjects: Subject[] = []
+  if (response.ok) {
+    const data = await response.json()
+    subjects = data.subjects || []
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -43,8 +58,8 @@ export default async function TeacherDashboard() {
 
       <div className="mb-6 flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          {subjects?.length || 0} materia{subjects?.length !== 1 ? "s" : ""} registrada
-          {subjects?.length !== 1 ? "s" : ""}
+          {subjects.length} materia{subjects.length !== 1 ? "s" : ""} registrada
+          {subjects.length !== 1 ? "s" : ""}
         </p>
         <CreateSubjectDialog>
           <Button>
@@ -54,7 +69,7 @@ export default async function TeacherDashboard() {
         </CreateSubjectDialog>
       </div>
 
-      <SubjectsList subjects={subjects || []} />
+      <SubjectsList subjects={subjects} />
     </div>
   )
 }

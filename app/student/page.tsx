@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { EnrolledSubjectsList } from "@/components/enrolled-subjects-list"
 import { QRScannerButton } from "@/components/qr-scanner-button"
+import type { Enrollment, Subject } from "@/lib/types"
+
+type EnrollmentWithSubject = Enrollment & { subjects: Subject }
 
 export default async function StudentDashboard() {
   const supabase = await createClient()
@@ -26,11 +30,24 @@ export default async function StudentDashboard() {
     redirect("/teacher")
   }
 
-  const { data: enrollments } = await supabase
-    .from("enrollments")
-    .select("*, subjects(*)")
-    .eq("student_id", user.id)
-    .order("enrolled_at", { ascending: false })
+  // Fetch enrollments from API route
+  const headersList = await headers()
+  const host = headersList.get("host") || "localhost:3000"
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http"
+  const baseUrl = `${protocol}://${host}`
+
+  const response = await fetch(`${baseUrl}/api/enrollments?studentId=${user.id}`, {
+    cache: "no-store",
+    headers: {
+      Cookie: headersList.get("cookie") || "",
+    },
+  })
+
+  let enrollments: EnrollmentWithSubject[] = []
+  if (response.ok) {
+    const data = await response.json()
+    enrollments = data.enrollments || []
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -41,13 +58,13 @@ export default async function StudentDashboard() {
 
       <div className="mb-6 flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          {enrollments?.length || 0} materia{enrollments?.length !== 1 ? "s" : ""} inscrita
-          {enrollments?.length !== 1 ? "s" : ""}
+          {enrollments.length} materia{enrollments.length !== 1 ? "s" : ""} inscrita
+          {enrollments.length !== 1 ? "s" : ""}
         </p>
         <QRScannerButton />
       </div>
 
-      <EnrolledSubjectsList enrollments={enrollments || []} />
+      <EnrolledSubjectsList enrollments={enrollments} />
     </div>
   )
 }
