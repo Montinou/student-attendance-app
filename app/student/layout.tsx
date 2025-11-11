@@ -27,7 +27,7 @@ export default async function StudentLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <StudentNav />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-16 md:pb-0">{children}</main>
     </div>
   )
 }
