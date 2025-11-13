@@ -153,11 +153,11 @@ npm install -g vercel
 #### Autenticar
 
 ```bash
-# Login con token
+# Login interactivo
 vercel login
 
-# O usar token directamente
-vercel --token xlZfF4ANIRFDqJDBLSlAWRMp
+# O usar token desde variable de entorno (recomendado)
+vercel --token $VERCEL_TOKEN
 ```
 
 #### Deploy a Producción

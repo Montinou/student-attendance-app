@@ -536,7 +536,7 @@ ANTI-PATTERNS DETECTED:
       <step>1. Push changes to main branch</step>
       <step>2. Wait 100 seconds for Vercel deployment</step>
       <step>3. Check deployment status:
-        vercel ls --token xlZfF4ANIRFDqJDBLSlAWRMp
+        vercel ls --token $VERCEL_TOKEN
       </step>
       <step>4. Verify latest deployment is Ready</step>
     </deployment-process>
@@ -553,7 +553,7 @@ ANTI-PATTERNS DETECTED:
     </production-tests>
 
     <vercel-logs-check>
-      <command>vercel logs --token xlZfF4ANIRFDqJDBLSlAWRMp</command>
+      <command>vercel logs --token $VERCEL_TOKEN</command>
       <look-for>
         <item>No 500 errors</item>
         <item>No unhandled exceptions</item>
